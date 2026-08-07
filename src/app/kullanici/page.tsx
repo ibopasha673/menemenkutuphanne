@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { User, LogOut, Globe, BookOpen, Phone, CreditCard } from "lucide-react";
 
 export default function KullaniciPaneli() {
@@ -69,9 +70,9 @@ export default function KullaniciPaneli() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm flex items-center gap-2 transition">
+            <Link href="/" className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm flex items-center gap-2 transition">
               <Globe className="w-4 h-4 text-emerald-400" /> Ana Sayfa
-            </a>
+            </Link>
             <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm flex items-center gap-2 cursor-pointer transition">
               <LogOut className="w-4 h-4" /> Çıkış Yap
             </button>

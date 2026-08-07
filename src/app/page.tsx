@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { BookOpen, LogOut, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Link eklendi
 
 type SliderItem = {
   id: string;
@@ -120,7 +121,7 @@ export default function Home() {
       {/* ÜST KISIM (Header) */}
       <header className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-8 py-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
         <div className="flex items-center gap-4">
-          <a href="/" className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center">
               <img
                 src="/logomenemenkutuphaen.png"
@@ -128,7 +129,7 @@ export default function Home() {
                 className="w-full h-full rounded-full object-cover animate-logo-spin"
               />
             </div>
-          </a>
+          </Link>
           <div>
             <h1 className="font-extrabold text-xl tracking-wider text-white drop-shadow-md">
               Ekşi Kitap Kulübü
@@ -144,13 +145,13 @@ export default function Home() {
           {!authLoading && (
             userProfile ? (
               <div className="flex items-center gap-3">
-                <a
+                <Link
                   href="/kullanici"
                   className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
                 >
                   <UserIcon className="w-4 h-4 text-emerald-400" />
                   <span>Merhaba, {userProfile.isim} {userProfile.soyisim}</span>
-                </a>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
@@ -159,12 +160,12 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <a
+              <Link
                 href="/giris"
                 className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
               >
                 Giriş Yap / Üye Ol
-              </a>
+              </Link>
             )
           )}
         </div>
@@ -248,7 +249,7 @@ export default function Home() {
           <span>•</span>
           <a href="#" className="hover:text-emerald-400 transition-colors">Çerez Politikası</a>
           <span>•</span>
-          <a href="/admin-giris" className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400">Yönetici Paneli</a>
+          <Link href="/admin-giris" className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400">Yönetici Paneli</Link>
         </div>
       </footer>
     </div>
