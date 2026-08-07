@@ -3,15 +3,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Phone, CreditCard, CheckCircle, User, Lock } from "lucide-react";
+import { Phone, CreditCard, CheckCircle } from "lucide-react";
 
 export default function ProfilTamamlaPage() {
   const [phone, setPhone] = useState("");
   const [tcKimlik, setTcKimlik] = useState("");
   const [isim, setIsim] = useState("");
   const [soyisim, setSoyisim] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
@@ -84,11 +82,6 @@ export default function ProfilTamamlaPage() {
       return;
     }
 
-    if (password !== confirmPassword) {
-      alert("Şifreler uyuşmuyor!");
-      return;
-    }
-
     setLoading(true);
 
     // Aynı telefon veya TC ile mükerrer kayıt kontrolü
@@ -104,18 +97,7 @@ export default function ProfilTamamlaPage() {
       return;
     }
 
-    // 1. Supabase Auth şifresini güncelle
-    const { error: authUpdateError } = await supabase.auth.updateUser({
-      password: password
-    });
-
-    if (authUpdateError) {
-      alert("Şifre Auth sistemine kaydedilemedi: " + authUpdateError.message);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Profiles tablosuna kaydet
+    // Profiles tablosuna kaydet
     const { error } = await supabase.from("profiles").upsert({
       id: userId,
       email: userEmail,
@@ -221,36 +203,6 @@ export default function ProfilTamamlaPage() {
                 value={tcKimlik}
                 onChange={(e) => setTcKimlik(e.target.value)}
                 placeholder="11 haneli TC Kimlik No"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1 font-medium">Şifre Belirle</label>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3.5 w-4 h-4 text-zinc-500" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1 font-medium">Şifreyi Tekrar Gir</label>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3.5 w-4 h-4 text-zinc-500" />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 required
               />
