@@ -27,7 +27,7 @@ type BookItem = {
   id: string;
   baslik: string;
   yazar: string;
-  gorsel_url: string; // Veritabanında ismi neyse oradan eşlenmeli, senin tablonda kapak_gorseli ise aşağıda mappediyoruz
+  gorsel_url: string;
   kapak_gorseli: string;
   toplam_sayfa: number;
   kisa_aciklama?: string;
@@ -111,7 +111,7 @@ export default function AdminPage() {
     const { data, error } = await supabase
       .from("books")
       .select("*")
-      .order("olusturma_tarihi", { ascending: false });
+      .order("created_time", { ascending: false });
 
     if (!error) {
       setBooks(data || []);
@@ -159,7 +159,7 @@ export default function AdminPage() {
         yil: bookYil,
       };
       if (finalGorselUrl) {
-        updateData.kapak_gorseli = finalGorselUrl; // Veritabanındaki doğru kolon ismi
+        updateData.kapak_gorseli = finalGorselUrl;
       }
 
       const { error } = await supabase
@@ -170,11 +170,11 @@ export default function AdminPage() {
       if (error) {
         alert("Kitap güncellenirken hata oluştu: " + error.message);
       } else {
+        alert("Kitap başarıyla güncellendi!");
         resetBookForm();
         fetchBooks();
       }
     } else {
-      // YENİ KİTAP EKLERKEN GÖRSEL ZORUNLULUĞU (İstersen kaldırabilirsin)
       if (!finalGorselUrl) {
         alert("Lütfen bir kitap görseli seçin!");
         setLoading(false);
@@ -197,6 +197,7 @@ export default function AdminPage() {
       if (error) {
         alert("Kitap eklenirken hata oluştu: " + error.message);
       } else {
+        alert("Kitap başarıyla kaydedildi!");
         resetBookForm();
         fetchBooks();
       }
@@ -213,7 +214,7 @@ export default function AdminPage() {
     setBookToplantiBilgileri(book.toplanti_bilgileri || "");
     setBookAy(book.ay || "");
     setBookYil(book.yil || "");
-    setBookFile(null); // Dosya inputunu sıfırlarız, mevcut görsel kalsın diye.
+    setBookFile(null);
   };
 
   const resetBookForm = () => {
@@ -235,6 +236,7 @@ export default function AdminPage() {
     if (error) {
       alert("Silinirken hata oluştu: " + error.message);
     } else {
+      alert("Kitap silindi!");
       fetchBooks();
     }
   };
