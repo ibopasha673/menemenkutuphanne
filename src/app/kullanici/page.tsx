@@ -62,15 +62,17 @@ export default function KullaniciPaneli() {
     <div className="min-h-screen bg-zinc-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex justify-between items-center border-b border-zinc-800 pb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-emerald-400">Üye Paneli</h1>
-            <p className="text-xs text-zinc-400 mt-1">Hoş geldin, {profile?.isim || "Üye"}.</p>
+          <div className="flex items-center gap-3">
+            <div className="text-xs md:text-sm font-medium text-emerald-300 bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md">
+              <User className="w-4 h-4 text-emerald-400" />
+              <span>Merhaba, {profile?.isim || "Üye"} {profile?.soyisim || ""}</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm flex items-center gap-2">
+            <a href="/" className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm flex items-center gap-2 transition">
               <Globe className="w-4 h-4 text-emerald-400" /> Ana Sayfa
             </a>
-            <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm flex items-center gap-2 cursor-pointer">
+            <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm flex items-center gap-2 cursor-pointer transition">
               <LogOut className="w-4 h-4" /> Çıkış Yap
             </button>
           </div>

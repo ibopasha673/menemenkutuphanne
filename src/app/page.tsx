@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { BookOpen } from "lucide-react";
+import { BookOpen, LogOut, User as UserIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type SliderItem = {
   id: string;
@@ -22,9 +23,25 @@ export default function Home() {
   const [sliders, setSliders] = useState<SliderItem[]>([]);
   const [books, setBooks] = useState<BookItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchData() {
+      // 1. Oturum ve Profil Kontrolü
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("isim, soyisim")
+          .eq("id", session.user.id)
+          .single();
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+      }
+
+      // 2. Slider Verileri
       const { data: sliderData } = await supabase
         .from("sliders")
         .select("*")
@@ -42,6 +59,7 @@ export default function Home() {
         ]);
       }
 
+      // 3. Kitap Arşivi Verileri
       const { data: bookData } = await supabase
         .from("books")
         .select("*")
@@ -65,19 +83,27 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [sliders.length]);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUserProfile(null);
+    window.location.reload();
+  };
+
   return (
     <div className="relative w-full min-h-[120vh] flex flex-col bg-zinc-950 text-white overflow-x-hidden">
       
       {/* ÜST KISIM (Header) */}
       <header className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-8 py-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center">
-            <img
-              src="/logomenemenkutuphaen.png"
-              alt="Logo"
-              className="w-full h-full rounded-full object-cover animate-logo-spin"
-            />
-          </div>
+          <a href="/" className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center">
+              <img
+                src="/logomenemenkutuphaen.png"
+                alt="Logo"
+                className="w-full h-full rounded-full object-cover animate-logo-spin"
+              />
+            </div>
+          </a>
           <div>
             <h1 className="font-extrabold text-xl tracking-wider text-white drop-shadow-md">
               Ekşi Kitap Kulübü
@@ -88,13 +114,32 @@ export default function Home() {
           </div>
         </div>
 
-        <div>
-          <a
-            href="/giris"
-            className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
-          >
-            Giriş Yap / Üye Ol
-          </a>
+        {/* SAĞ ÜST BUTON VEYA KULLANICI BİLGİSİ */}
+        <div className="flex items-center gap-4">
+          {userProfile ? (
+            <div className="flex items-center gap-3">
+              <a
+                href="/kullanici"
+                className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+              >
+                <UserIcon className="w-4 h-4 text-emerald-400" />
+                <span>Merhaba, {userProfile.isim} {userProfile.soyisim}</span>
+              </a>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
+              >
+                <LogOut className="w-4 h-4" /> Çıkış Yap
+              </button>
+            </div>
+          ) : (
+            <a
+              href="/giris"
+              className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
+            >
+              Giriş Yap / Üye Ol
+            </a>
+          )}
         </div>
       </header>
 
@@ -135,7 +180,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* GEÇMİŞTE OKUNAN KİTAPLAR BÖLÜMÜ (Misafir Ekranı) */}
+      {/* GEÇMİŞTE OKUNAN KİTAPLAR BÖLÜMÜ */}
       <section className="w-full py-16 px-8 bg-zinc-950 border-t border-zinc-900 z-20">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="text-center space-y-2">
