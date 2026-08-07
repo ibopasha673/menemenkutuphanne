@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { BookOpen } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -9,21 +10,28 @@ type SliderItem = {
   slogan: string | null;
 };
 
+type BookItem = {
+  id: string;
+  baslik: string;
+  yazar: string;
+  gorsel_url: string;
+  toplam_sayfa: number;
+};
+
 export default function Home() {
   const [sliders, setSliders] = useState<SliderItem[]>([]);
+  const [books, setBooks] = useState<BookItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    async function fetchSliders() {
-      const { data, error } = await supabase
+    async function fetchData() {
+      const { data: sliderData } = await supabase
         .from("sliders")
         .select("*")
         .order("sira", { ascending: true });
 
-      if (error) {
-        console.error("Slider yüklenirken hata oluştu:", error.message);
-      } else if (data && data.length > 0) {
-        setSliders(data);
+      if (sliderData && sliderData.length > 0) {
+        setSliders(sliderData);
       } else {
         setSliders([
           {
@@ -33,9 +41,18 @@ export default function Home() {
           },
         ]);
       }
+
+      const { data: bookData } = await supabase
+        .from("books")
+        .select("*")
+        .order("olusturma_tarihi", { ascending: false });
+
+      if (bookData) {
+        setBooks(bookData);
+      }
     }
 
-    fetchSliders();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -118,7 +135,36 @@ export default function Home() {
         </div>
       </main>
 
-      {/* EN ALT FOOTER: Sayfa aşağı kaydırıldığında ortaya çıkan alan */}
+      {/* GEÇMİŞTE OKUNAN KİTAPLAR BÖLÜMÜ (Misafir Ekranı) */}
+      <section className="w-full py-16 px-8 bg-zinc-950 border-t border-zinc-900 z-20">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-emerald-400 flex items-center justify-center gap-2">
+              <BookOpen className="w-6 h-6" /> Kulüp Arşivi: Geçmişte Okunan Kitaplar
+            </h2>
+            <p className="text-xs text-zinc-400">Ekşi Kitap Kulübü İzmir olarak şimdiye kadar birlikte okuduğumuz eserler.</p>
+          </div>
+
+          {books.length === 0 ? (
+            <div className="text-center text-zinc-500 text-sm py-8">Henüz arşivde kitap bulunmuyor.</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {books.map((book) => (
+                <div key={book.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg hover:border-emerald-500/50 transition">
+                  <img src={book.gorsel_url} alt={book.baslik} className="w-28 h-36 rounded-xl object-cover mb-3 border border-zinc-800 shadow-md" />
+                  <h3 className="text-sm font-bold text-white line-clamp-1">{book.baslik}</h3>
+                  <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5">{book.yazar}</p>
+                  <span className="text-[11px] font-medium text-emerald-400 mt-2 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                    {book.toplam_sayfa} Sayfa
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* EN ALT FOOTER */}
       <footer className="w-full py-6 bg-black/90 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center text-xs text-zinc-400 gap-1.5 z-30 mt-auto">
         <p className="font-medium text-zinc-300">
           Ekşi Kitap Kulübü İzmir & 2026 Tüm Hakları Saklıdır.

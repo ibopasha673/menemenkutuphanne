@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -23,11 +23,20 @@ type UserProfile = {
   blog_yetkisi: boolean;
 };
 
+type BookItem = {
+  id: string;
+  baslik: string;
+  yazar: string;
+  gorsel_url: string;
+  toplam_sayfa: number;
+};
+
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<"sliders" | "users">("sliders");
+  const [activeTab, setActiveTab] = useState<"sliders" | "users" | "books">("sliders");
   
   const [sliders, setSliders] = useState<SliderItem[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [books, setBooks] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
@@ -37,6 +46,13 @@ export default function AdminPage() {
   const [slogan, setSlogan] = useState("");
   const [sira, setSira] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Book Form States
+  const [bookBaslik, setBookBaslik] = useState("");
+  const [bookYazar, setBookYazar] = useState("");
+  const [bookToplamSayfa, setBookToplamSayfa] = useState<number>(100);
+  const [bookFile, setBookFile] = useState<File | null>(null);
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkAuth() {
@@ -48,6 +64,7 @@ export default function AdminPage() {
         setAuthorized(true);
         fetchSliders();
         fetchUsers();
+        fetchBooks();
       }
     }
     checkAuth();
@@ -75,12 +92,122 @@ export default function AdminPage() {
       .from("profiles")
       .select("*");
 
-    if (error) {
-      console.error("Üyeler çekilemedi:", error.message);
-    } else {
+    if (!error) {
       setUsers(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchBooks = async () => {
+    const { data, error } = await supabase
+      .from("books")
+      .select("*")
+      .order("olusturma_tarihi", { ascending: false });
+
+    if (!error) {
+      setBooks(data || []);
+    }
+  };
+
+  // Kitap Ekleme / Güncelleme (Dosya Yükleme Destekli)
+  const handleSaveBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    let finalGorselUrl = "";
+
+    if (bookFile) {
+      const fileExt = bookFile.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("kitaplar")
+        .upload(filePath, bookFile);
+
+      if (uploadError) {
+        alert("Görsel yüklenirken hata oluştu: " + uploadError.message);
+        setLoading(false);
+        return;
+      }
+
+      const { data: publicURLData } = supabase.storage
+        .from("kitaplar")
+        .getPublicUrl(filePath);
+
+      finalGorselUrl = publicURLData.publicUrl;
+    }
+
+    if (editingBookId) {
+      const updateData: any = {
+        baslik: bookBaslik,
+        yazar: bookYazar,
+        toplam_sayfa: bookToplamSayfa,
+      };
+      if (finalGorselUrl) {
+        updateData.gorsel_url = finalGorselUrl;
+      }
+
+      const { error } = await supabase
+        .from("books")
+        .update(updateData)
+        .eq("id", editingBookId);
+
+      if (error) {
+        alert("Kitap güncellenirken hata oluştu: " + error.message);
+      } else {
+        setEditingBookId(null);
+        setBookBaslik("");
+        setBookYazar("");
+        setBookToplamSayfa(100);
+        setBookFile(null);
+        fetchBooks();
+      }
+    } else {
+      if (!finalGorselUrl) {
+        alert("Lütfen bir kitap görseli seçin!");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.from("books").insert([
+        {
+          baslik: bookBaslik,
+          yazar: bookYazar,
+          toplam_sayfa: bookToplamSayfa,
+          gorsel_url: finalGorselUrl,
+        },
+      ]);
+
+      if (error) {
+        alert("Kitap eklenirken hata oluştu: " + error.message);
+      } else {
+        setBookBaslik("");
+        setBookYazar("");
+        setBookToplamSayfa(100);
+        setBookFile(null);
+        fetchBooks();
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleEditBook = (book: BookItem) => {
+    setEditingBookId(book.id);
+    setBookBaslik(book.baslik);
+    setBookYazar(book.yazar);
+    setBookToplamSayfa(book.toplam_sayfa);
+  };
+
+  const handleDeleteBook = async (id: string) => {
+    if (!confirm("Bu kitabı silmek istediğinize emin misiniz?")) return;
+
+    const { error } = await supabase.from("books").delete().eq("id", id);
+    if (error) {
+      alert("Silinirken hata oluştu: " + error.message);
+    } else {
+      fetchBooks();
+    }
   };
 
   // Blog Yetkisini Güncelleme
@@ -185,7 +312,7 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold tracking-wide text-emerald-400">
             Yönetici Paneli
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">Slider görsellerini ve kulüp üyelerini buradan yönetebilirsiniz.</p>
+          <p className="text-xs text-zinc-400 mt-1">Slider, üyeler ve okunmuş kitap yönetimini buradan yapabilirsiniz.</p>
         </div>
 
         <button
@@ -196,8 +323,8 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* SEKME GEÇİŞLERİ (Slider Yönetimi / Üye Yönetimi) */}
-      <div className="flex gap-4 mb-8 border-b border-zinc-800 pb-4">
+      {/* SEKME GEÇİŞLERİ */}
+      <div className="flex flex-wrap gap-3 mb-8 border-b border-zinc-800 pb-4">
         <button
           type="button"
           onClick={() => setActiveTab("sliders")}
@@ -208,6 +335,17 @@ export default function AdminPage() {
           }`}
         >
           Slider Yönetimi
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("books")}
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer flex items-center gap-2 ${
+            activeTab === "books"
+              ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
+              : "bg-zinc-900 text-zinc-400 hover:text-white"
+          }`}
+        >
+          <BookOpen className="w-4 h-4" /> Kitap Yönetimi ({books.length})
         </button>
         <button
           type="button"
@@ -222,7 +360,7 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* 1. SLİDER YÖNETİMİ SEKMESİ */}
+      {/* 1. SLİDER YÖNETİMİ */}
       {activeTab === "sliders" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
@@ -283,7 +421,73 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 2. ÜYE YÖNETİMİ SEKMESİ */}
+      {/* 2. KİTAP YÖNETİMİ SEKMESİ */}
+      {activeTab === "books" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
+            <h2 className="text-lg font-semibold mb-4 text-emerald-300 flex items-center gap-2">
+              {editingBookId ? <Edit3 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {editingBookId ? "Kitabı Düzenle" : "Yeni Kitap Ekle"}
+            </h2>
+
+            <form onSubmit={handleSaveBook} className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kitap Başlığı</label>
+                <input type="text" value={bookBaslik} onChange={(e) => setBookBaslik(e.target.value)} placeholder="Örn: Nutuk" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yazar</label>
+                <input type="text" value={bookYazar} onChange={(e) => setBookYazar(e.target.value)} placeholder="Örn: Mustafa Kemal Atatürk" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Toplam Sayfa Sayısı</label>
+                <input type="number" min={1} value={bookToplamSayfa} onChange={(e) => setBookToplamSayfa(Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kitap Görseli Seç</label>
+                <input type="file" accept="image/*" onChange={(e) => setBookFile(e.target.files?.[0] || null)} className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
+                  <Save className="w-4 h-4" /> {editingBookId ? "Güncelle" : "Ekle"}
+                </button>
+                {editingBookId && (
+                  <button type="button" onClick={() => { setEditingBookId(null); setBookBaslik(""); setBookYazar(""); setBookToplamSayfa(100); setBookFile(null); }} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Kitaplar ({books.length})</h2>
+            {books.length === 0 ? <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">Henüz eklenmiş kitap bulunmuyor.</div> : (
+              <div className="space-y-3">
+                {books.map((book) => (
+                  <div key={book.id} className="flex items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                    <div className="flex items-center gap-4">
+                      <img src={book.gorsel_url} alt={book.baslik} className="w-14 h-16 rounded-xl object-cover border border-zinc-800" />
+                      <div>
+                        <h3 className="text-sm font-bold text-white">{book.baslik}</h3>
+                        <p className="text-xs text-zinc-400">Yazar: {book.yazar}</p>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md mt-1 inline-block">Sayfa: {book.toplam_sayfa}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditBook(book)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer"><Edit3 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteBook(book.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. ÜYE YÖNETİMİ */}
       {activeTab === "users" && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Kulüp Üyeleri</h2>
