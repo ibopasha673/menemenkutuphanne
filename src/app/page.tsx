@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -131,7 +130,7 @@ export default function Home() {
           <span>•</span>
           <a href="#" className="hover:text-emerald-400 transition-colors">Çerez Politikası</a>
           <span>•</span>
-          <a href="/admin" className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400">Yönetici Paneli</a>
+          <a href="/admin-giris" className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400">Yönetici Paneli</a>
         </div>
       </footer>
     </div>
