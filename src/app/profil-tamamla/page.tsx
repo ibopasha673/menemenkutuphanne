@@ -104,7 +104,7 @@ export default function ProfilTamamlaPage() {
       return;
     }
 
-    // 1. Supabase Auth şifresini güncelle (Böylece telefonla giriş yaparken signInWithPassword başarılı olur)
+    // 1. Supabase Auth şifresini güncelle
     const { error: authUpdateError } = await supabase.auth.updateUser({
       password: password
     });
@@ -115,7 +115,7 @@ export default function ProfilTamamlaPage() {
       return;
     }
 
-    // 2. Profiles tablosuna kaydet (Artık sadece 'email' kolonu kullanılıyor, 'eposta' silindi)
+    // 2. Profiles tablosuna kaydet
     const { error } = await supabase.from("profiles").upsert({
       id: userId,
       email: userEmail,
@@ -164,6 +164,9 @@ export default function ProfilTamamlaPage() {
           <h1 className="text-2xl font-bold text-emerald-400">Kayıt İşlemini Tamamlayın</h1>
           <p className="text-xs text-zinc-400 mt-1">
             Google hesabınız bağlandı (<span className="text-zinc-200">{userEmail}</span>). Lütfen ek bilgilerinizi girin.
+          </p>
+          <p className="text-[11px] text-emerald-300 font-medium mt-2 bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl">
+            Not: Bu bilgiler sadece ilk girişinize mahsus alınmaktadır ve sonrasında bir daha sorulmaz.
           </p>
         </div>
 
