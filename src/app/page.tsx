@@ -308,6 +308,15 @@ export default function Home() {
             SAĞ ÜST KULLANICI ALANI
         ================================================== */}
         <div className="flex items-center gap-4">
+          <Link
+            href="/kitaplar"
+            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-400" />
+
+            <span>Kitaplar</span>
+          </Link>
+
           {authLoading ? (
             // Kullanıcı kontrol edilirken boş bırakıyoruz.
             <div className="w-32 h-10 rounded-xl bg-zinc-900/50 animate-pulse" />

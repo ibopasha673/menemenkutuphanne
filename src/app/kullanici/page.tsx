@@ -238,12 +238,16 @@ export default function KullaniciPaneli() {
           ================================================= */}
           <div className="flex items-center gap-3">
 
-            {/* =================================================
-                ANA SAYFA
-                BURASI ÖNEMLİ:
-                <a href="/"> YOK
-                <Link href="/"> VAR
-            ================================================= */}
+            {/* KİTAPLAR LİNKİ */}
+            <Link
+              href="/kitaplar"
+              className="px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition rounded-xl border border-zinc-800 flex items-center gap-2"
+            >
+              <BookOpen className="w-4 h-4 text-emerald-400" />
+              Kitaplar
+            </Link>
+
+            {/* ANA SAYFA */}
             <Link
               href="/"
               className="px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition rounded-xl border border-zinc-800 flex items-center gap-2"
@@ -252,9 +256,7 @@ export default function KullaniciPaneli() {
               Ana Sayfa
             </Link>
 
-            {/* =================================================
-                ÇIKIŞ YAP
-            ================================================= */}
+            {/* ÇIKIŞ YAP */}
             <button
               type="button"
               onClick={handleLogout}
