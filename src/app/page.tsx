@@ -35,133 +35,203 @@ export default function Home() {
 
   const router = useRouter();
 
+  // =========================================================
+  // KULLANICIYI BUL
+  // =========================================================
+  const loadUser = async () => {
+    try {
+      // Önce gerçek kullanıcıyı Auth üzerinden alıyoruz.
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      console.log("ANA SAYFA AUTH USER:", user);
+      console.log("ANA SAYFA AUTH ERROR:", userError);
+
+      // Kullanıcı giriş yapmamışsa
+      if (!user) {
+        console.log("ANA SAYFA: Kullanıcı giriş yapmamış.");
+        setUserProfile(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      console.log("ANA SAYFA: Giriş yapılmış kullanıcı:", user.id);
+
+      // Önce metadata'dan geçici isim al.
+      // Böylece profiles sorgusu gecikse bile
+      // kullanıcı giriş yapmış olarak görünür.
+      const metadataProfile: UserProfile = {
+        isim:
+          user.user_metadata?.isim ||
+          user.user_metadata?.first_name ||
+          user.user_metadata?.full_name?.split(" ")[0] ||
+          null,
+
+        soyisim:
+          user.user_metadata?.soyisim ||
+          user.user_metadata?.last_name ||
+          (() => {
+            const fullName = user.user_metadata?.full_name;
+
+            if (!fullName) return null;
+
+            const parts = fullName.trim().split(" ");
+
+            if (parts.length <= 1) return null;
+
+            return parts.slice(1).join(" ");
+          })() ||
+          null,
+      };
+
+      // Önce kullanıcıyı giriş yapmış kabul ediyoruz.
+      setUserProfile(metadataProfile);
+
+      // Sonra profiles tablosundan gerçek bilgileri çekiyoruz.
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("isim, soyisim")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      console.log("ANA SAYFA PROFILE:", profileData);
+      console.log("ANA SAYFA PROFILE ERROR:", profileError);
+
+      // Profiles tablosundan bilgi geldiyse onu kullan.
+      if (profileData) {
+        setUserProfile({
+          isim: profileData.isim,
+          soyisim: profileData.soyisim,
+        });
+      }
+
+      setAuthLoading(false);
+    } catch (error) {
+      console.error("ANA SAYFA KULLANICI HATASI:", error);
+
+      // Burada kullanıcıyı otomatik olarak misafir yapmıyoruz.
+      // getUser hata verirse sadece loading'i kapatıyoruz.
+      setAuthLoading(false);
+    }
+  };
+
+  // =========================================================
+  // SAYFA AÇILDIĞINDA
+  // =========================================================
   useEffect(() => {
     let mounted = true;
 
-    async function fetchData() {
-      try {
-        /*
-         * ============================================================
-         * 1. SUPABASE SESSION KONTROLÜ
-         * ============================================================
-         */
+    const initialize = async () => {
+      if (!mounted) return;
 
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+      await loadUser();
 
-        if (sessionError) {
-          console.error("Session alınamadı:", sessionError);
-        }
+      // =====================================================
+      // SLIDERLAR
+      // =====================================================
+      const { data: sliderData, error: sliderError } = await supabase
+        .from("sliders")
+        .select("*")
+        .order("sira", { ascending: true });
 
-        /*
-         * ============================================================
-         * 2. KULLANICI VARSA PROFILES TABLOSUNDAN BİLGİLERİNİ AL
-         * ============================================================
-         */
+      console.log("SLIDER DATA:", sliderData);
+      console.log("SLIDER ERROR:", sliderError);
 
-        if (session?.user?.id) {
-          console.log("Aktif kullanıcı ID:", session.user.id);
-
-          const { data: profileData, error: profileError } =
-            await supabase
-              .from("profiles")
-              .select("isim, soyisim")
-              .eq("id", session.user.id)
-              .maybeSingle();
-
-          if (profileError) {
-            console.error("Profil alınamadı:", profileError);
-          }
-
-          if (profileData && mounted) {
-            console.log("Profil bulundu:", profileData);
-            setUserProfile(profileData);
-          } else if (mounted) {
-            console.log("Kullanıcı session var fakat profil bulunamadı.");
-            setUserProfile(null);
-          }
-        } else {
-          console.log("Aktif Supabase session bulunamadı.");
-
-          if (mounted) {
-            setUserProfile(null);
-          }
-        }
-
-        /*
-         * ============================================================
-         * 3. SLIDERLARI GETİR
-         * ============================================================
-         */
-
-        const { data: sliderData, error: sliderError } =
-          await supabase
-            .from("sliders")
-            .select("*")
-            .order("sira", { ascending: true });
-
-        if (sliderError) {
-          console.error("Slider alınamadı:", sliderError);
-        }
-
-        if (mounted) {
-          if (sliderData && sliderData.length > 0) {
-            setSliders(sliderData);
-          } else {
-            setSliders([
-              {
-                id: "1",
-                gorsel_url: "/logomenemenkutuphaen.png",
-                slogan:
-                  "Ekşi Kitap Kulübü İzmir - Kitap dolu sohbetler burada başlar.",
-              },
-            ]);
-          }
-        }
-
-        /*
-         * ============================================================
-         * 4. KİTAPLARI GETİR
-         * ============================================================
-         */
-
-        const { data: bookData, error: bookError } =
-          await supabase
-            .from("books")
-            .select("*")
-            .order("olusturma_tarihi", { ascending: false });
-
-        if (bookError) {
-          console.error("Kitaplar alınamadı:", bookError);
-        }
-
-        if (mounted && bookData) {
-          setBooks(bookData);
-        }
-      } catch (error) {
-        console.error("Ana sayfa veri yükleme hatası:", error);
-      } finally {
-        if (mounted) {
-          setAuthLoading(false);
-        }
+      if (sliderData && sliderData.length > 0) {
+        setSliders(sliderData);
+      } else {
+        setSliders([
+          {
+            id: "1",
+            gorsel_url: "/logomenemenkutuphaen.png",
+            slogan:
+              "Ekşi Kitap Kulübü İzmir - Kitap dolu sohbetler burada başlar.",
+          },
+        ]);
       }
-    }
 
-    fetchData();
+      // =====================================================
+      // KİTAPLAR
+      // =====================================================
+      const { data: bookData, error: bookError } = await supabase
+        .from("books")
+        .select("*")
+        .order("olusturma_tarihi", { ascending: false });
+
+      console.log("BOOK DATA:", bookData);
+      console.log("BOOK ERROR:", bookError);
+
+      if (bookData) {
+        setBooks(bookData);
+      }
+    };
+
+    initialize();
+
+    // =======================================================
+    // AUTH DEĞİŞİKLİĞİNİ DİNLE
+    // =======================================================
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("AUTH EVENT:", event);
+      console.log("AUTH SESSION:", session);
+
+      if (session?.user) {
+        // Kullanıcı giriş yaptıysa burada direkt
+        // giriş yapılmış olarak işaretliyoruz.
+        const user = session.user;
+
+        const metadataProfile: UserProfile = {
+          isim:
+            user.user_metadata?.isim ||
+            user.user_metadata?.first_name ||
+            user.user_metadata?.full_name?.split(" ")[0] ||
+            null,
+
+          soyisim:
+            user.user_metadata?.soyisim ||
+            user.user_metadata?.last_name ||
+            (() => {
+              const fullName = user.user_metadata?.full_name;
+
+              if (!fullName) return null;
+
+              const parts = fullName.trim().split(" ");
+
+              if (parts.length <= 1) return null;
+
+              return parts.slice(1).join(" ");
+            })() ||
+            null,
+        };
+
+        setUserProfile(metadataProfile);
+        setAuthLoading(false);
+
+        // Profiles tablosundan güncel bilgiyi ayrıca çek.
+        setTimeout(() => {
+          loadUser();
+        }, 0);
+      } else {
+        console.log("AUTH: Kullanıcı çıkış yapmış.");
+
+        setUserProfile(null);
+        setAuthLoading(false);
+      }
+    });
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  /*
-   * ================================================================
-   * SLIDER OTOMATİK GEÇİŞ
-   * ================================================================
-   */
-
+  // =========================================================
+  // SLIDER OTOMATİK GEÇİŞ
+  // =========================================================
   useEffect(() => {
     if (sliders.length <= 1) return;
 
@@ -174,19 +244,13 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [sliders.length]);
 
-  /*
-   * ================================================================
-   * ÇIKIŞ YAP
-   * ================================================================
-   */
-
+  // =========================================================
+  // ÇIKIŞ YAP
+  // =========================================================
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
+    console.log("ÇIKIŞ YAPILIYOR...");
 
-    if (error) {
-      console.error("Çıkış yapılamadı:", error);
-      return;
-    }
+    await supabase.auth.signOut();
 
     setUserProfile(null);
 
@@ -194,21 +258,30 @@ export default function Home() {
     router.refresh();
   };
 
-  /*
-   * ================================================================
-   * SAYFA
-   * ================================================================
-   */
+  // =========================================================
+  // İSİM GÖSTER
+  // =========================================================
+  const getUserName = () => {
+    if (!userProfile) return "Üye";
 
+    const isim = userProfile.isim || "";
+    const soyisim = userProfile.soyisim || "";
+
+    const fullName = `${isim} ${soyisim}`.trim();
+
+    return fullName || "Üye";
+  };
+
+  // =========================================================
+  // SAYFA
+  // =========================================================
   return (
     <div className="relative w-full min-h-[120vh] flex flex-col bg-zinc-950 text-white overflow-x-hidden">
-      {/* ============================================================
+      {/* =====================================================
           HEADER
-      ============================================================ */}
-
+      ====================================================== */}
       <header className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-8 py-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
-        {/* LOGO + BAŞLIK */}
-
+        {/* LOGO */}
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center">
@@ -231,67 +304,57 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ==========================================================
-            SAĞ ÜST KISIM
-        ========================================================== */}
-
+        {/* =================================================
+            SAĞ ÜST KULLANICI ALANI
+        ================================================== */}
         <div className="flex items-center gap-4">
-          {!authLoading && (
-            <>
-              {userProfile ? (
-                <div className="flex items-center gap-3">
-                  {/* KULLANICI PANELİ */}
+          {authLoading ? (
+            // Kullanıcı kontrol edilirken boş bırakıyoruz.
+            <div className="w-32 h-10 rounded-xl bg-zinc-900/50 animate-pulse" />
+          ) : userProfile ? (
+            // =================================================
+            // GİRİŞ YAPMIŞ KULLANICI
+            // =================================================
+            <div className="flex items-center gap-3">
+              <Link
+                href="/kullanici"
+                className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+              >
+                <UserIcon className="w-4 h-4 text-emerald-400" />
 
-                  <Link
-                    href="/kullanici"
-                    className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
-                  >
-                    <UserIcon className="w-4 h-4 text-emerald-400" />
+                <span>Merhaba, {getUserName()}</span>
+              </Link>
 
-                    <span>
-                      Merhaba, {userProfile.isim || "Üye"}{" "}
-                      {userProfile.soyisim || ""}
-                    </span>
-                  </Link>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
+              >
+                <LogOut className="w-4 h-4" />
 
-                  {/* ÇIKIŞ */}
-
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
-                  >
-                    <LogOut className="w-4 h-4" />
-
-                    Çıkış Yap
-                  </button>
-                </div>
-              ) : (
-                /* GİRİŞ YAP */
-
-                <Link
-                  href="/giris"
-                  className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
-                >
-                  Giriş Yap / Üye Ol
-                </Link>
-              )}
-            </>
+                Çıkış Yap
+              </button>
+            </div>
+          ) : (
+            // =================================================
+            // MİSAFİR
+            // =================================================
+            <Link
+              href="/giris"
+              className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
+            >
+              Giriş Yap / Üye Ol
+            </Link>
           )}
         </div>
       </header>
 
-      {/* ============================================================
+      {/* =====================================================
           SLIDER
-      ============================================================ */}
-
+      ====================================================== */}
       <main className="relative w-full h-screen flex items-center justify-center">
         {sliders.length > 0 && (
           <div className="absolute inset-0 w-full h-full">
-            {/* KARARTMA */}
-
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40 z-10" />
-
-            {/* GÖRSEL */}
 
             <img
               src={sliders[currentIndex].gorsel_url}
@@ -300,7 +363,6 @@ export default function Home() {
             />
 
             {/* SLOGAN */}
-
             {sliders[currentIndex].slogan && (
               <div className="absolute bottom-24 left-10 z-20 max-w-lg bg-black/60 backdrop-blur-md p-6 rounded-2xl border-l-4 border-emerald-400 shadow-2xl">
                 <p className="text-lg md:text-xl font-light italic text-emerald-100 tracking-wide drop-shadow">
@@ -312,7 +374,6 @@ export default function Home() {
         )}
 
         {/* SLIDER NOKTALARI */}
-
         <div className="absolute bottom-24 right-10 z-30 flex gap-2.5 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
           {sliders.map((_, index) => (
             <button
@@ -328,10 +389,9 @@ export default function Home() {
         </div>
       </main>
 
-      {/* ============================================================
+      {/* =====================================================
           KİTAP ARŞİVİ
-      ============================================================ */}
-
+      ====================================================== */}
       <section className="w-full py-16 px-8 bg-zinc-950 border-t border-zinc-900 z-20">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="text-center space-y-2">
@@ -382,10 +442,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============================================================
+      {/* =====================================================
           FOOTER
-      ============================================================ */}
-
+      ====================================================== */}
       <footer className="w-full py-6 bg-black/90 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center text-xs text-zinc-400 gap-1.5 z-30 mt-auto">
         <p className="font-medium text-zinc-300">
           Ekşi Kitap Kulübü İzmir & 2026 Tüm Hakları Saklıdır.
