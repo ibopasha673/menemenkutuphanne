@@ -25,8 +25,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      // Eğer kullanıcı misafir ekranına dönüyorsa yetki kontrolünü atla
-      if (sessionStorage.getItem("redirecting_to_guest") === "true") {
+      // Tarayıcı ortamında mıyız kontrol et ve sessionStorage'ı güvenle oku
+      const isRedirecting = typeof window !== "undefined" && sessionStorage.getItem("redirecting_to_guest") === "true";
+      
+      if (isRedirecting) {
         return;
       }
 
@@ -42,16 +44,18 @@ export default function AdminPage() {
     checkAuth();
   }, [router]);
 
-  // Sadece çıkış yap butonuna basıldığında oturumu sonlandırıp giriş sayfasına atar
   const handleLogout = async () => {
-    sessionStorage.removeItem("redirecting_to_guest");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("redirecting_to_guest");
+    }
     await supabase.auth.signOut();
     router.push("/giris");
   };
 
-  // Misafir ekranına dön butonuna basıldığında oturumu kapatmadan direkt ana sayfaya yönlendirir
   const handleGoToGuest = () => {
-    sessionStorage.setItem("redirecting_to_guest", "true");
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("redirecting_to_guest", "true");
+    }
     router.push("/");
   };
 
@@ -126,7 +130,9 @@ export default function AdminPage() {
     }
   };
 
-  if (!authorized && sessionStorage.getItem("redirecting_to_guest") !== "true") {
+  const isRedirectingCheck = typeof window !== "undefined" && sessionStorage.getItem("redirecting_to_guest") === "true";
+
+  if (!authorized && !isRedirectingCheck) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">
         Yetki kontrol ediliyor...
