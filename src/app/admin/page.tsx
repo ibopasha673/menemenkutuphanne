@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, ArrowLeft, LogOut, Globe } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -25,13 +25,6 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      // Tarayıcı ortamında mıyız kontrol et ve sessionStorage'ı güvenle oku
-      const isRedirecting = typeof window !== "undefined" && sessionStorage.getItem("redirecting_to_guest") === "true";
-      
-      if (isRedirecting) {
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -45,18 +38,8 @@ export default function AdminPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("redirecting_to_guest");
-    }
     await supabase.auth.signOut();
     router.push("/giris");
-  };
-
-  const handleGoToGuest = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("redirecting_to_guest", "true");
-    }
-    router.push("/");
   };
 
   const fetchSliders = async () => {
@@ -130,9 +113,7 @@ export default function AdminPage() {
     }
   };
 
-  const isRedirectingCheck = typeof window !== "undefined" && sessionStorage.getItem("redirecting_to_guest") === "true";
-
-  if (!authorized && !isRedirectingCheck) {
+  if (!authorized) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">
         Yetki kontrol ediliyor...
@@ -150,25 +131,16 @@ export default function AdminPage() {
           <p className="text-xs text-zinc-400 mt-1">Slider görsellerini ve içeriklerini buradan yönetebilirsiniz.</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleGoToGuest}
-            className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
-          >
-            <Globe className="w-4 h-4 text-emerald-400" /> Misafir Ekranına Dön
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" /> Çıkış Yap
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" /> Çıkış Yap
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Form kısmı aynı kalıyor */}
         <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
           <h2 className="text-lg font-semibold mb-4 text-emerald-300 flex items-center gap-2">
             {editingId ? <Edit3 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -177,62 +149,24 @@ export default function AdminPage() {
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
-                Görsel URL
-              </label>
-              <input
-                type="text"
-                value={gorselUrl}
-                onChange={(e) => setGorselUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                required
-              />
+              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Görsel URL</label>
+              <input type="text" value={gorselUrl} onChange={(e) => setGorselUrl(e.target.value)} placeholder="https://..." className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
             </div>
-
             <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
-                Slogan Metni
-              </label>
-              <textarea
-                value={slogan}
-                onChange={(e) => setSlogan(e.target.value)}
-                placeholder="Slider sloganı..."
-                rows={3}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
+              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Slogan Metni</label>
+              <textarea value={slogan} onChange={(e) => setSlogan(e.target.value)} placeholder="Slider sloganı..." rows={3} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
-
             <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
-                Gösterim Sırası
-              </label>
-              <input
-                type="number"
-                value={sira}
-                onChange={(e) => setSira(Number(e.target.value))}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
+              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Gösterim Sırası</label>
+              <input type="number" value={sira} onChange={(e) => setSira(Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2"
-              >
+              <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2">
                 <Save className="w-4 h-4" /> {editingId ? "Güncelle" : "Ekle"}
               </button>
               {editingId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(null);
-                    setGorselUrl("");
-                    setSlogan("");
-                    setSira(0);
-                  }}
-                  className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center"
-                >
+                <button type="button" onClick={() => { setEditingId(null); setGorselUrl(""); setSlogan(""); setSira(0); }} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -241,52 +175,21 @@ export default function AdminPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold text-zinc-200">
-            Kayıtlı Slider Listesi ({sliders.length})
-          </h2>
-
-          {loading ? (
-            <p className="text-zinc-500">Yükleniyor...</p>
-          ) : sliders.length === 0 ? (
-            <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">
-              Henüz kayıtlı slider bulunmuyor.
-            </div>
-          ) : (
+          <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Slider Listesi ({sliders.length})</h2>
+          {loading ? <p className="text-zinc-500">Yükleniyor...</p> : sliders.length === 0 ? <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">Henüz kayıtlı slider bulunmuyor.</div> : (
             <div className="space-y-3">
               {sliders.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl"
-                >
+                <div key={item.id} className="flex items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
                   <div className="flex items-center gap-4">
-                    <img
-                      src={item.gorsel_url}
-                      alt="Slider"
-                      className="w-16 h-16 rounded-xl object-cover border border-zinc-800"
-                    />
+                    <img src={item.gorsel_url} alt="Slider" className="w-16 h-16 rounded-xl object-cover border border-zinc-800" />
                     <div>
-                      <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md">
-                        Sıra: {item.sira}
-                      </span>
-                      <p className="text-sm font-medium text-zinc-200 mt-1 line-clamp-1">
-                        {item.slogan || "Slogan yok"}
-                      </p>
+                      <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md">Sıra: {item.sira}</span>
+                      <p className="text-sm font-medium text-zinc-200 mt-1 line-clamp-1">{item.slogan || "Slogan yok"}</p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => handleEdit(item)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300"><Edit3 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}
