@@ -28,7 +28,7 @@ type Book = {
   id: string;
   baslik: string;
   yazar: string;
-  gorsel_url: string;
+  kapak_gorseli: string; // Doğru kolon adı ile güncellendi
   toplam_sayfa: number;
 };
 
@@ -89,12 +89,12 @@ export default function KullaniciPaneli() {
         setProfile(data);
 
         // -----------------------------------------------
-        // KİTAPLAR
+        // KİTAPLAR (Doğru sıralama kolonu: created_time)
         // -----------------------------------------------
         const { data: booksData, error: booksError } = await supabase
           .from("books")
           .select("*")
-          .order("olusturma_tarihi", {
+          .order("created_time", {
             ascending: false,
           });
 
@@ -367,7 +367,7 @@ export default function KullaniciPaneli() {
                   >
 
                     <img
-                      src={book.gorsel_url}
+                      src={book.kapak_gorseli}
                       alt={book.baslik}
                       className="w-16 h-20 rounded-xl object-cover border border-zinc-800 flex-shrink-0"
                     />
