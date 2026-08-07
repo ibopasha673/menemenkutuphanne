@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function KitaplarPage() {
   const [aktifSekme, setAktifSekme] = useState<"guncel" | "gecmis">("guncel");
@@ -37,7 +38,6 @@ export default function KitaplarPage() {
   }, [router]);
 
   async function veriCek() {
-    // Geçmiş kitaplar (books tablosu) ve Güncel kitaplar
     const { data: bData } = await supabase.from("books").select("*");
     if (bData) setGecmisKitaplar(bData);
 
@@ -53,7 +53,6 @@ export default function KitaplarPage() {
       .select("*, profiles:user_id (isim, soyisim)");
     
     if (!error && data) {
-      // Kitap bazlı gruparama
       const grouped: { [key: string]: any[] } = {};
       data.forEach((rev) => {
         if (!grouped[rev.book_id]) grouped[rev.book_id] = [];
@@ -63,7 +62,6 @@ export default function KitaplarPage() {
     }
   }
 
-  // Yorum Gönder
   const handleYorumGonder = async (bookId: string) => {
     if (!userId) return;
 
@@ -86,7 +84,6 @@ export default function KitaplarPage() {
     }
   };
 
-  // Ortalama puan hesaplama yardımcı fonksiyonu
   const getOrtalamaPuan = (bookId: string) => {
     const yorumlar = kitapYorumlari[bookId];
     if (!yorumlar || yorumlar.length === 0) return "Henüz Puan Yok";
@@ -154,25 +151,57 @@ export default function KitaplarPage() {
             return (
               <div key={book.id} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
                 <div>
-                  {/* KİTAP KAPAK GÖRSELİ */}
-                  {book.kapak_gorseli && (
-                    <img
-                      src={book.kapak_gorseli}
-                      alt={book.baslik}
-                      className="w-24 h-36 object-cover rounded-xl border border-zinc-800 shadow-lg mb-4"
-                    />
-                  )}
+                  <div className="flex gap-5 items-start">
+                    {/* HIZLI YÜKLENEN OPTİMİZE KAPAK GÖRSELİ */}
+                    {book.kapak_gorseli && (
+                      <div className="relative w-24 h-36 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 shadow-md">
+                        <Image
+                          src={book.kapak_gorseli}
+                          alt={book.baslik || "Kitap Kapağı"}
+                          fill
+                          sizes="96px"
+                          priority={false}
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
 
-                  <div className="flex justify-between items-start gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-emerald-300">{book.baslik}</h3>
-                      <p className="text-zinc-400 text-sm">{book.yazar}</p>
-                    </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-emerald-400 font-bold text-sm">
-                      <Star className="w-4 h-4 fill-emerald-400" />
-                      <span>{ortalama}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h3 className="text-xl font-bold text-emerald-300">{book.baslik}</h3>
+                          <p className="text-zinc-400 text-sm">{book.yazar}</p>
+                          {book.ay && book.yil && (
+                            <span className="inline-block text-[11px] bg-zinc-800/80 text-emerald-400 px-2 py-0.5 rounded-md mt-1 border border-zinc-700/50">
+                              {book.ay} {book.yil}
+                            </span>
+                          )}
+                        </div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-emerald-400 font-bold text-sm flex-shrink-0">
+                          <Star className="w-4 h-4 fill-emerald-400" />
+                          <span>{ortalama}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* KISA AÇIKLAMA VE TOPLANTI BİLGİLERİ */}
+                  {(book.kisa_aciklama || book.toplanti_bilgileri) && (
+                    <div className="mt-4 space-y-2 bg-zinc-950/40 p-3.5 rounded-xl border border-zinc-800/60 text-xs">
+                      {book.kisa_aciklama && (
+                        <p className="text-zinc-300 flex items-start gap-2 leading-relaxed">
+                          <Info className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                          <span>{book.kisa_aciklama}</span>
+                        </p>
+                      )}
+                      {book.toplanti_bilgileri && (
+                        <p className="text-zinc-400 flex items-center gap-2 pt-1 border-t border-zinc-800/40">
+                          <Calendar className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                          <span className="font-medium text-zinc-300">Toplantı:</span> {book.toplanti_bilgileri}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Yorumlar Listesi */}
