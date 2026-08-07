@@ -25,6 +25,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function checkAuth() {
+      // Eğer kullanıcı misafir ekranına dönüyorsa yetki kontrolünü atla
+      if (sessionStorage.getItem("redirecting_to_guest") === "true") {
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -39,12 +44,14 @@ export default function AdminPage() {
 
   // Sadece çıkış yap butonuna basıldığında oturumu sonlandırıp giriş sayfasına atar
   const handleLogout = async () => {
+    sessionStorage.removeItem("redirecting_to_guest");
     await supabase.auth.signOut();
     router.push("/giris");
   };
 
   // Misafir ekranına dön butonuna basıldığında oturumu kapatmadan direkt ana sayfaya yönlendirir
   const handleGoToGuest = () => {
+    sessionStorage.setItem("redirecting_to_guest", "true");
     router.push("/");
   };
 
@@ -119,7 +126,7 @@ export default function AdminPage() {
     }
   };
 
-  if (!authorized) {
+  if (!authorized && sessionStorage.getItem("redirecting_to_guest") !== "true") {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">
         Yetki kontrol ediliyor...
@@ -139,12 +146,14 @@ export default function AdminPage() {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={handleGoToGuest}
             className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
           >
             <Globe className="w-4 h-4 text-emerald-400" /> Misafir Ekranına Dön
           </button>
           <button
+            type="button"
             onClick={handleLogout}
             className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
           >
