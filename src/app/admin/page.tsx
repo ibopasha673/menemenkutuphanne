@@ -37,9 +37,15 @@ export default function AdminPage() {
     checkAuth();
   }, [router]);
 
+  // Sadece çıkış yap butonuna basıldığında oturumu sonlandırıp giriş sayfasına atar
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/giris");
+  };
+
+  // Misafir ekranına dön butonuna basıldığında oturumu kapatmadan direkt ana sayfaya yönlendirir
+  const handleGoToGuest = () => {
+    router.push("/");
   };
 
   const fetchSliders = async () => {
@@ -132,15 +138,15 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <a
-            href="/"
-            className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition flex items-center gap-2 text-sm text-zinc-300"
+          <button
+            onClick={handleGoToGuest}
+            className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
           >
             <Globe className="w-4 h-4 text-emerald-400" /> Misafir Ekranına Dön
-          </a>
+          </button>
           <button
             onClick={handleLogout}
-            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400"
+            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Çıkış Yap
           </button>
