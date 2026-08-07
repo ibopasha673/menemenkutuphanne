@@ -27,8 +27,13 @@ type BookItem = {
   id: string;
   baslik: string;
   yazar: string;
-  gorsel_url: string;
+  gorsel_url: string; // Veritabanında ismi neyse oradan eşlenmeli, senin tablonda kapak_gorseli ise aşağıda mappediyoruz
+  kapak_gorseli: string;
   toplam_sayfa: number;
+  kisa_aciklama?: string;
+  toplanti_bilgileri?: string;
+  ay?: string;
+  yil?: string;
 };
 
 export default function AdminPage() {
@@ -51,6 +56,10 @@ export default function AdminPage() {
   const [bookBaslik, setBookBaslik] = useState("");
   const [bookYazar, setBookYazar] = useState("");
   const [bookToplamSayfa, setBookToplamSayfa] = useState<number>(100);
+  const [bookKisaAciklama, setBookKisaAciklama] = useState("");
+  const [bookToplantiBilgileri, setBookToplantiBilgileri] = useState("");
+  const [bookAy, setBookAy] = useState("");
+  const [bookYil, setBookYil] = useState("");
   const [bookFile, setBookFile] = useState<File | null>(null);
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
@@ -116,6 +125,7 @@ export default function AdminPage() {
 
     let finalGorselUrl = "";
 
+    // GÖRSEL YÜKLEME KISMI
     if (bookFile) {
       const fileExt = bookFile.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
@@ -143,9 +153,13 @@ export default function AdminPage() {
         baslik: bookBaslik,
         yazar: bookYazar,
         toplam_sayfa: bookToplamSayfa,
+        kisa_aciklama: bookKisaAciklama,
+        toplanti_bilgileri: bookToplantiBilgileri,
+        ay: bookAy,
+        yil: bookYil,
       };
       if (finalGorselUrl) {
-        updateData.gorsel_url = finalGorselUrl;
+        updateData.kapak_gorseli = finalGorselUrl; // Veritabanındaki doğru kolon ismi
       }
 
       const { error } = await supabase
@@ -156,14 +170,11 @@ export default function AdminPage() {
       if (error) {
         alert("Kitap güncellenirken hata oluştu: " + error.message);
       } else {
-        setEditingBookId(null);
-        setBookBaslik("");
-        setBookYazar("");
-        setBookToplamSayfa(100);
-        setBookFile(null);
+        resetBookForm();
         fetchBooks();
       }
     } else {
+      // YENİ KİTAP EKLERKEN GÖRSEL ZORUNLULUĞU (İstersen kaldırabilirsin)
       if (!finalGorselUrl) {
         alert("Lütfen bir kitap görseli seçin!");
         setLoading(false);
@@ -175,17 +186,18 @@ export default function AdminPage() {
           baslik: bookBaslik,
           yazar: bookYazar,
           toplam_sayfa: bookToplamSayfa,
-          gorsel_url: finalGorselUrl,
+          kapak_gorseli: finalGorselUrl,
+          kisa_aciklama: bookKisaAciklama,
+          toplanti_bilgileri: bookToplantiBilgileri,
+          ay: bookAy,
+          yil: bookYil,
         },
       ]);
 
       if (error) {
         alert("Kitap eklenirken hata oluştu: " + error.message);
       } else {
-        setBookBaslik("");
-        setBookYazar("");
-        setBookToplamSayfa(100);
-        setBookFile(null);
+        resetBookForm();
         fetchBooks();
       }
     }
@@ -194,9 +206,26 @@ export default function AdminPage() {
 
   const handleEditBook = (book: BookItem) => {
     setEditingBookId(book.id);
-    setBookBaslik(book.baslik);
-    setBookYazar(book.yazar);
-    setBookToplamSayfa(book.toplam_sayfa);
+    setBookBaslik(book.baslik || "");
+    setBookYazar(book.yazar || "");
+    setBookToplamSayfa(book.toplam_sayfa || 100);
+    setBookKisaAciklama(book.kisa_aciklama || "");
+    setBookToplantiBilgileri(book.toplanti_bilgileri || "");
+    setBookAy(book.ay || "");
+    setBookYil(book.yil || "");
+    setBookFile(null); // Dosya inputunu sıfırlarız, mevcut görsel kalsın diye.
+  };
+
+  const resetBookForm = () => {
+    setEditingBookId(null);
+    setBookBaslik("");
+    setBookYazar("");
+    setBookToplamSayfa(100);
+    setBookKisaAciklama("");
+    setBookToplantiBilgileri("");
+    setBookAy("");
+    setBookYil("");
+    setBookFile(null);
   };
 
   const handleDeleteBook = async (id: string) => {
@@ -432,19 +461,39 @@ export default function AdminPage() {
 
             <form onSubmit={handleSaveBook} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kitap Başlığı</label>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kitap Başlığı *</label>
                 <input type="text" value={bookBaslik} onChange={(e) => setBookBaslik(e.target.value)} placeholder="Örn: Nutuk" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yazar</label>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yazar *</label>
                 <input type="text" value={bookYazar} onChange={(e) => setBookYazar(e.target.value)} placeholder="Örn: Mustafa Kemal Atatürk" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
               </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Toplam Sayfa Sayısı</label>
-                <input type="number" min={1} value={bookToplamSayfa} onChange={(e) => setBookToplamSayfa(Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Toplam Sayfa *</label>
+                  <input type="number" min={1} value={bookToplamSayfa} onChange={(e) => setBookToplamSayfa(Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yıl</label>
+                  <input type="text" value={bookYil} onChange={(e) => setBookYil(e.target.value)} placeholder="2026" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kitap Görseli Seç</label>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Ay</label>
+                <input type="text" value={bookAy} onChange={(e) => setBookAy(e.target.value)} placeholder="Ocak" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Kısa Açıklama</label>
+                <textarea rows={2} value={bookKisaAciklama} onChange={(e) => setBookKisaAciklama(e.target.value)} placeholder="Kitap hakkında kısa bilgi..." className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Toplantı Bilgileri</label>
+                <input type="text" value={bookToplantiBilgileri} onChange={(e) => setBookToplantiBilgileri(e.target.value)} placeholder="14 Ocak 2026 - Çevrim içi" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                  Kitap Görseli Seç (Mevcudu değiştirmek istersen seç)
+                </label>
                 <input type="file" accept="image/*" onChange={(e) => setBookFile(e.target.files?.[0] || null)} className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
               </div>
 
@@ -453,7 +502,7 @@ export default function AdminPage() {
                   <Save className="w-4 h-4" /> {editingBookId ? "Güncelle" : "Ekle"}
                 </button>
                 {editingBookId && (
-                  <button type="button" onClick={() => { setEditingBookId(null); setBookBaslik(""); setBookYazar(""); setBookToplamSayfa(100); setBookFile(null); }} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
+                  <button type="button" onClick={resetBookForm} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -468,11 +517,23 @@ export default function AdminPage() {
                 {books.map((book) => (
                   <div key={book.id} className="flex items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
                     <div className="flex items-center gap-4">
-                      <img src={book.gorsel_url} alt={book.baslik} className="w-14 h-16 rounded-xl object-cover border border-zinc-800" />
+                      {book.kapak_gorseli ? (
+                        <img src={book.kapak_gorseli} alt={book.baslik} className="w-14 h-20 rounded-xl object-cover border border-zinc-800" />
+                      ) : (
+                        <div className="w-14 h-20 rounded-xl border border-zinc-800 bg-zinc-800/50 flex items-center justify-center text-[10px] text-zinc-500 text-center">Görsel Yok</div>
+                      )}
+                      
                       <div>
                         <h3 className="text-sm font-bold text-white">{book.baslik}</h3>
                         <p className="text-xs text-zinc-400">Yazar: {book.yazar}</p>
-                        <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md mt-1 inline-block">Sayfa: {book.toplam_sayfa}</span>
+                        <div className="flex gap-2 mt-1">
+                           <span className="text-[11px] font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-md inline-block">S: {book.toplam_sayfa}</span>
+                           {(book.ay || book.yil) && (
+                              <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md inline-block">
+                                {book.ay} {book.yil}
+                              </span>
+                           )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
