@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
+type SliderItem = {
+  id: string;
+  gorsel_url: string;
+  slogan: string | null;
+};
 
 export default function AdminGirisPage() {
   const [email, setEmail] = useState("");
@@ -11,13 +17,52 @@ export default function AdminGirisPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const [sliders, setSliders] = useState<SliderItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Arka plan için slider verilerini çekme
+  useEffect(() => {
+    async function fetchSliders() {
+      const { data, error } = await supabase
+        .from("sliders")
+        .select("*")
+        .order("sira", { ascending: true });
+
+      if (error) {
+        console.error("Slider yüklenirken hata oluştu:", error.message);
+      } else if (data && data.length > 0) {
+        setSliders(data);
+      } else {
+        setSliders([
+          {
+            id: "1",
+            gorsel_url: "/logomenemenkutuphaen.png",
+            slogan: "Ekşi Kitap Kulübü İzmir - Yönetici Paneli",
+          },
+        ]);
+      }
+    }
+
+    fetchSliders();
+  }, []);
+
+  // Slider otomatik geçiş efekti
+  useEffect(() => {
+    if (sliders.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % sliders.length);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [sliders.length]);
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      // Supabase Auth ile giriş yapma
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -25,7 +70,6 @@ export default function AdminGirisPage() {
 
       if (authError) throw authError;
 
-      // Giriş başarılıysa admin sayfasına yönlendir
       router.push("/admin");
     } catch (err: any) {
       setError(err.message || "Giriş başarısız. Bilgilerinizi kontrol edin.");
@@ -35,8 +79,22 @@ export default function AdminGirisPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white px-4">
-      <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-2xl">
+    <div className="relative min-h-screen flex items-center justify-center bg-zinc-950 text-white overflow-hidden px-4">
+      
+      {/* ARKA PLAN: Dinamik Slider Görseli */}
+      {sliders.length > 0 && (
+        <div className="absolute inset-0 w-full h-full z-0">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-10" />
+          <img
+            src={sliders[currentIndex].gorsel_url}
+            alt="Arka Plan Slider"
+            className="w-full h-full object-cover scale-105 transition-transform duration-1000 opacity-40"
+          />
+        </div>
+      )}
+
+      {/* ORTADAKİ GİRİŞ KARTI */}
+      <div className="relative z-20 w-full max-w-md bg-zinc-900/90 backdrop-blur-md border border-zinc-800 p-8 rounded-2xl shadow-2xl">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-wider text-emerald-400">Yönetici Girişi</h1>
           <p className="text-sm text-zinc-400 mt-1">Ekşi Kitap Kulübü İzmir</p>
@@ -95,4 +153,3 @@ export default function AdminGirisPage() {
     </div>
   );
 }
-
