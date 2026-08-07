@@ -154,6 +154,15 @@ export default function KitaplarPage() {
             return (
               <div key={book.id} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
                 <div>
+                  {/* KİTAP KAPAK GÖRSELİ */}
+                  {book.kapak_gorseli && (
+                    <img
+                      src={book.kapak_gorseli}
+                      alt={book.baslik}
+                      className="w-24 h-36 object-cover rounded-xl border border-zinc-800 shadow-lg mb-4"
+                    />
+                  )}
+
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <h3 className="text-xl font-bold text-emerald-300">{book.baslik}</h3>
