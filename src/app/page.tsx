@@ -24,24 +24,27 @@ export default function Home() {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     async function fetchData() {
-      // 1. Oturum ve Profil Kontrolü
+      // Oturum kontrolünü en güncel session ile yapıyoruz
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("isim, soyisim")
           .eq("id", session.user.id)
           .single();
+
         if (profileData) {
           setUserProfile(profileData);
         }
       }
 
-      // 2. Slider Verileri
+      // Slider Verileri
       const { data: sliderData } = await supabase
         .from("sliders")
         .select("*")
@@ -59,7 +62,7 @@ export default function Home() {
         ]);
       }
 
-      // 3. Kitap Arşivi Verileri
+      // Kitap Arşivi Verileri
       const { data: bookData } = await supabase
         .from("books")
         .select("*")
@@ -68,9 +71,31 @@ export default function Home() {
       if (bookData) {
         setBooks(bookData);
       }
+
+      setAuthLoading(false);
     }
 
     fetchData();
+
+    // Oturum değişikliklerini anlık dinle
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("isim, soyisim")
+          .eq("id", session.user.id)
+          .single();
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+      } else {
+        setUserProfile(null);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -86,7 +111,7 @@ export default function Home() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserProfile(null);
-    window.location.reload();
+    router.push("/giris");
   };
 
   return (
@@ -116,29 +141,31 @@ export default function Home() {
 
         {/* SAĞ ÜST BUTON VEYA KULLANICI BİLGİSİ */}
         <div className="flex items-center gap-4">
-          {userProfile ? (
-            <div className="flex items-center gap-3">
+          {!authLoading && (
+            userProfile ? (
+              <div className="flex items-center gap-3">
+                <a
+                  href="/kullanici"
+                  className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+                >
+                  <UserIcon className="w-4 h-4 text-emerald-400" />
+                  <span>Merhaba, {userProfile.isim} {userProfile.soyisim}</span>
+                </a>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
+                >
+                  <LogOut className="w-4 h-4" /> Çıkış Yap
+                </button>
+              </div>
+            ) : (
               <a
-                href="/kullanici"
-                className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+                href="/giris"
+                className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
               >
-                <UserIcon className="w-4 h-4 text-emerald-400" />
-                <span>Merhaba, {userProfile.isim} {userProfile.soyisim}</span>
+                Giriş Yap / Üye Ol
               </a>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
-              >
-                <LogOut className="w-4 h-4" /> Çıkış Yap
-              </button>
-            </div>
-          ) : (
-            <a
-              href="/giris"
-              className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
-            >
-              Giriş Yap / Üye Ol
-            </a>
+            )
           )}
         </div>
       </header>
