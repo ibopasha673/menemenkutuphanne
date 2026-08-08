@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3 } from "lucide-react";
 import Link from "next/link";
 
 export default function KitaplarPage() {
@@ -12,9 +12,12 @@ export default function KitaplarPage() {
   const [gecmisKitaplar, setGecmisKitaplar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("uye");
 
   // Yorum form state'leri
   const [aktifKitapId, setAktifKitapId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [puan, setPuan] = useState<number>(5);
   const [yorumMetni, setYorumMetni] = useState("");
   const [kitapYorumlari, setKitapYorumlari] = useState<{ [key: string]: any[] }>({});
@@ -29,6 +32,17 @@ export default function KitaplarPage() {
         return;
       }
       setUserId(session.user.id);
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profileData) {
+        setUserRole(profileData.role || "uye");
+      }
+
       setLoading(false);
       veriCek();
       tumYorumlariCek();
@@ -61,26 +75,76 @@ export default function KitaplarPage() {
     }
   }
 
-  const handleYorumGonder = async (bookId: string) => {
+  const handleYorumKaydet = async (bookId: string) => {
     if (!userId) return;
 
-    const { error } = await supabase.from("reviews").insert([
-      {
-        book_id: bookId,
-        user_id: userId,
-        puan: Number(puan),
-        yorum: yorumMetni,
-      },
-    ]);
+    if (isEditing && editingReviewId) {
+      const { error } = await supabase
+        .from("reviews")
+        .update({ puan: Number(puan), yorum: yorumMetni })
+        .eq("id", editingReviewId);
 
-    if (error) {
-      alert("Yorum gönderilirken hata oluştu: " + error.message);
+      if (error) {
+        alert("Yorum güncellenirken hata oluştu: " + error.message);
+      } else {
+        alert("Yorumunuz başarıyla güncellendi!");
+        resetForm();
+        tumYorumlariCek();
+      }
     } else {
-      alert("Yorumunuz başarıyla eklendi!");
-      setYorumMetni("");
-      setAktifKitapId(null);
+      const existingReviews = kitapYorumlari[bookId] || [];
+      const userAlreadyReviewed = existingReviews.some(r => r.user_id === userId);
+
+      if (userAlreadyReviewed) {
+        alert("Bu kitap için zaten bir yorumunuz var. Mevcut yorumunuzu düzenleyebilirsiniz.");
+        return;
+      }
+
+      const { error } = await supabase.from("reviews").insert([
+        {
+          book_id: bookId,
+          user_id: userId,
+          puan: Number(puan),
+          yorum: yorumMetni,
+        },
+      ]);
+
+      if (error) {
+        alert("Yorum gönderilirken hata oluştu: " + error.message);
+      } else {
+        alert("Yorumunuz başarıyla eklendi!");
+        resetForm();
+        tumYorumlariCek();
+      }
+    }
+  };
+
+  const handleYorumSil = async (reviewId: string) => {
+    if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;
+
+    const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+    if (error) {
+      alert("Yorum silinirken hata oluştu: " + error.message);
+    } else {
+      alert("Yorum silindi.");
       tumYorumlariCek();
     }
+  };
+
+  const handleDuzenleTikla = (review: any) => {
+    setAktifKitapId(review.book_id);
+    setIsEditing(true);
+    setEditingReviewId(review.id);
+    setPuan(review.puan);
+    setYorumMetni(review.yorum);
+  };
+
+  const resetForm = () => {
+    setAktifKitapId(null);
+    setIsEditing(false);
+    setEditingReviewId(null);
+    setYorumMetni("");
+    setPuan(5);
   };
 
   const getOrtalamaPuan = (bookId: string) => {
@@ -147,12 +211,13 @@ export default function KitaplarPage() {
             const realBookId = book.id;
             const ortalama = getOrtalamaPuan(realBookId);
             const kitapYorumlariListesi = kitapYorumlari[realBookId] || [];
+            
+            const userReview = kitapYorumlariListesi.find((r: any) => r.user_id === userId);
 
             return (
               <div key={book.id || Math.random()} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
                 <div>
                   <div className="flex gap-5 items-start">
-                    {/* STANDART GÖRSEL ETİKETİ (ADMIN PANELİYLE AYNI MANTIK) */}
                     {book.kapak_gorseli ? (
                       <img
                         src={book.kapak_gorseli}
@@ -209,24 +274,54 @@ export default function KitaplarPage() {
                   {kitapYorumlariListesi.length === 0 ? (
                     <p className="text-xs text-zinc-500 italic">Henüz yorum yapılmamış. İlk yorumu sen yap!</p>
                   ) : (
-                    kitapYorumlariListesi.map((rev: any) => (
-                      <div key={rev.id} className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80 text-xs">
-                        <div className="flex justify-between font-semibold text-zinc-300 mb-1">
-                          <span>{rev.profiles?.isim || "Üye"} {rev.profiles?.soyisim || ""}</span>
-                          <span className="text-emerald-400 flex items-center gap-0.5">⭐ {rev.puan}/5</span>
+                    kitapYorumlariListesi.map((rev: any) => {
+                      const benimYorumum = rev.user_id === userId;
+                      const isAdmin = userRole === "admin";
+
+                      return (
+                        <div key={rev.id} className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80 text-xs relative group">
+                          <div className="flex justify-between font-semibold text-zinc-300 mb-1">
+                            <span>{rev.profiles?.isim || "Üye"} {rev.profiles?.soyisim || ""}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 flex items-center gap-0.5">⭐ {rev.puan}/5</span>
+                              
+                              {(benimYorumum || isAdmin) && (
+                                <div className="flex items-center gap-1">
+                                  {benimYorumum && (
+                                    <button
+                                      onClick={() => handleDuzenleTikla(rev)}
+                                      className="text-zinc-400 hover:text-emerald-400 transition p-1 cursor-pointer"
+                                      title="Yorumumu Düzenle"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleYorumSil(rev.id)}
+                                    className="text-zinc-400 hover:text-red-400 transition p-1 cursor-pointer"
+                                    title="Yorumu Sil"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-zinc-400">{rev.yorum}</p>
                         </div>
-                        <p className="text-zinc-400">{rev.yorum}</p>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
-                {/* Yorum Yap Butonu / Formu */}
+                {/* Yorum Yap / Düzenle Form Alanı */}
                 <div className="mt-6 pt-4 border-t border-zinc-800">
                   {aktifKitapId === realBookId ? (
                     <div className="space-y-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-300 font-medium">Puanınız (1-5):</span>
+                        <span className="text-xs text-zinc-300 font-medium">
+                          {isEditing ? "Yorumunu Düzenle:" : "Puanınız (1-5):"}
+                        </span>
                         <select 
                           value={puan} 
                           onChange={(e) => setPuan(Number(e.target.value))}
@@ -248,26 +343,30 @@ export default function KitaplarPage() {
                       />
                       <div className="flex justify-end gap-2">
                         <button 
-                          onClick={() => setAktifKitapId(null)}
+                          onClick={resetForm}
                           className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg transition cursor-pointer"
                         >
                           İptal
                         </button>
                         <button 
-                          onClick={() => handleYorumGonder(realBookId)}
+                          onClick={() => handleYorumKaydet(realBookId)}
                           className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
                         >
-                          Gönder
+                          {isEditing ? "Güncelle" : "Gönder"}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => { setAktifKitapId(realBookId); setPuan(5); setYorumMetni(""); }}
-                      className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" /> Kitaba Yorum Yap & Puan Ver
-                    </button>
+                    !userReview ? (
+                      <button
+                        onClick={() => { setAktifKitapId(realBookId); setIsEditing(false); setPuan(5); setYorumMetni(""); }}
+                        className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-400" /> Kitaba Yorum Yap & Puan Ver
+                      </button>
+                    ) : (
+                      <p className="text-xs text-zinc-500 text-center italic">Bu kitap için zaten bir değerlendirmeniz bulunuyor.</p>
+                    )
                   )}
                 </div>
 
