@@ -5,7 +5,6 @@ import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function KitaplarPage() {
   const [aktifSekme, setAktifSekme] = useState<"guncel" | "gecmis">("guncel");
@@ -122,7 +121,7 @@ export default function KitaplarPage() {
         <div className="flex gap-4 mb-8 border-b border-zinc-800 pb-4">
           <button
             onClick={() => setAktifSekme("guncel")}
-            className={`px-6 py-2 rounded-xl font-semibold transition-all ${
+            className={`px-6 py-2 rounded-xl font-semibold transition-all cursor-pointer ${
               aktifSekme === "guncel" ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20" : "bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
             }`}
           >
@@ -130,7 +129,7 @@ export default function KitaplarPage() {
           </button>
           <button
             onClick={() => setAktifSekme("gecmis")}
-            className={`px-6 py-2 rounded-xl font-semibold transition-all ${
+            className={`px-6 py-2 rounded-xl font-semibold transition-all cursor-pointer ${
               aktifSekme === "gecmis" ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20" : "bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800"
             }`}
           >
@@ -144,26 +143,24 @@ export default function KitaplarPage() {
             ? guncelKitaplar.map(item => ({ ...item.books, rowId: item.id })) 
             : gecmisKitaplar
           ).map((book: any) => {
+            if (!book) return null;
             const realBookId = book.id;
             const ortalama = getOrtalamaPuan(realBookId);
             const kitapYorumlariListesi = kitapYorumlari[realBookId] || [];
 
             return (
-              <div key={book.id} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
+              <div key={book.id || Math.random()} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
                 <div>
                   <div className="flex gap-5 items-start">
-                    {/* HIZLI YÜKLENEN OPTİMİZE KAPAK GÖRSELİ */}
-                    {book.kapak_gorseli && (
-                      <div className="relative w-24 h-36 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 shadow-md">
-                        <Image
-                          src={book.kapak_gorseli}
-                          alt={book.baslik || "Kitap Kapağı"}
-                          fill
-                          sizes="96px"
-                          priority={false}
-                          className="object-cover"
-                        />
-                      </div>
+                    {/* STANDART GÖRSEL ETİKETİ (ADMIN PANELİYLE AYNI MANTIK) */}
+                    {book.kapak_gorseli ? (
+                      <img
+                        src={book.kapak_gorseli}
+                        alt={book.baslik || "Kitap Kapağı"}
+                        className="w-24 h-36 flex-shrink-0 rounded-xl object-cover border border-zinc-800 shadow-md"
+                      />
+                    ) : (
+                      <div className="w-24 h-36 flex-shrink-0 rounded-xl border border-zinc-800 bg-zinc-800/50 flex items-center justify-center text-[10px] text-zinc-500 text-center">Görsel Yok</div>
                     )}
 
                     <div className="flex-1">
@@ -252,13 +249,13 @@ export default function KitaplarPage() {
                       <div className="flex justify-end gap-2">
                         <button 
                           onClick={() => setAktifKitapId(null)}
-                          className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg transition"
+                          className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg transition cursor-pointer"
                         >
                           İptal
                         </button>
                         <button 
                           onClick={() => handleYorumGonder(realBookId)}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition"
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
                         >
                           Gönder
                         </button>
@@ -267,7 +264,7 @@ export default function KitaplarPage() {
                   ) : (
                     <button
                       onClick={() => { setAktifKitapId(realBookId); setPuan(5); setYorumMetni(""); }}
-                      className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2"
+                      className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" /> Kitaba Yorum Yap & Puan Ver
                     </button>
