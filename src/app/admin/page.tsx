@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star, FileText, Trophy, CheckCircle, Clock, Award } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star, FileText, Trophy, CheckCircle, Clock, Award, Bell } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -46,29 +46,37 @@ type YarismaItem = {
   yarisma_tarihi: string;
   basvuru_baslangic_tarihi: string;
   basvuru_bitis_tarihi: string;
-  durum: string; // 'aktif', 'bitti', 'sonuclandi'
+  durum: string;
+};
+
+type DuyuruItem = {
+  id: string;
+  duyuru_adi: string;
+  duyuru_icerigi: string;
+  yayimlanma_tarihi: string;
 };
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<"sliders" | "users" | "books" | "yarismalar">("sliders");
+  const [activeTab, setActiveTab] = useState<"sliders" | "users" | "books" | "yarismalar" | "duyurular">("sliders");
   
   const [sliders, setSliders] = useState<SliderItem[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [books, setBooks] = useState<BookItem[]>([]);
   const [yarismalar, setYarismalar] = useState<YarismaItem[]>([]);
+  const [duyurular, setDuyurular] = useState<DuyuruItem[]>([]);
   const [basvurular, setBasvurular] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
 
-  // Slider Form States
+  // Slider States
   const [gorselUrl, setGorselUrl] = useState("");
   const [slogan, setSlogan] = useState("");
   const [sira, setSira] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Book Form States
+  // Book States
   const [bookBaslik, setBookBaslik] = useState("");
   const [bookYazar, setBookYazar] = useState("");
   const [bookToplamSayfa, setBookToplamSayfa] = useState<number>(100);
@@ -82,7 +90,7 @@ export default function AdminPage() {
   const [existingKapakGorseli, setExistingKapakGorseli] = useState("");
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
-  // Yarışma Form States
+  // Yarışma States
   const [yarismaIsmi, setYarismaIsmi] = useState("");
   const [yarismaHakkinda, setYarismaHakkinda] = useState("");
   const [yarismaSartlari, setYarismaSartlari] = useState("");
@@ -92,14 +100,18 @@ export default function AdminPage() {
   const [yarismaDurumu, setYarismaDurumu] = useState("aktif");
   const [editingYarismaId, setEditingYarismaId] = useState<string | null>(null);
 
-  // Admin Yorum İnceleme States
+  // Duyuru States
+  const [duyuruAdi, setDuyuruAdi] = useState("");
+  const [duyuruIcerigi, setDuyuruIcerigi] = useState("");
+  const [yayimlanmaTarihi, setYayimlanmaTarihi] = useState("");
+  const [editingDuyuruId, setEditingDuyuruId] = useState<string | null>(null);
+
   const [selectedBookForReviews, setSelectedBookForReviews] = useState<BookItem | null>(null);
   const [kitapYorumlari, setKitapYorumlari] = useState<any[]>([]);
 
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
         router.push("/giris");
       } else {
@@ -108,6 +120,7 @@ export default function AdminPage() {
         fetchUsers();
         fetchBooks();
         fetchYarismalar();
+        fetchDuyurular();
         fetchBasvurular();
       }
     }
@@ -141,12 +154,58 @@ export default function AdminPage() {
     if (data) setYarismalar(data);
   };
 
+  const fetchDuyurular = async () => {
+    const { data } = await supabase.from("duyurular").select("*").order("created_time", { ascending: false });
+    if (data) setDuyurular(data);
+  };
+
   const fetchBasvurular = async () => {
     const { data } = await supabase
       .from("yarisma_basvurulari")
       .select("*, profiles:user_id (isim, soyisim, email), oyku_yarismalari:yarisma_id (yarisma_ismi)")
       .order("created_time", { ascending: false });
     if (data) setBasvurular(data);
+  };
+
+  // Duyuru Kaydet / Güncelle
+  const handleSaveDuyuru = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const duyuruData = {
+      duyuru_adi: duyuruAdi,
+      duyuru_icerigi: duyuruIcerigi,
+      yayimlanma_tarihi: yayimlanmaTarihi || new Date().toISOString(),
+    };
+
+    if (editingDuyuruId) {
+      const { error } = await supabase.from("duyurular").update(duyuruData).eq("id", editingDuyuruId);
+      if (error) alert("Hata: " + error.message);
+      else { alert("Duyuru güncellendi!"); resetDuyuruForm(); fetchDuyurular(); }
+    } else {
+      const { error } = await supabase.from("duyurular").insert([duyuruData]);
+      if (error) alert("Hata: " + error.message);
+      else { alert("Duyuru eklendi!"); resetDuyuruForm(); fetchDuyurular(); }
+    }
+  };
+
+  const handleEditDuyuru = (d: DuyuruItem) => {
+    setEditingDuyuruId(d.id);
+    setDuyuruAdi(d.duyuru_adi);
+    setDuyuruIcerigi(d.duyuru_icerigi || "");
+    setYayimlanmaTarihi(d.yayimlanma_tarihi ? d.yayimlanma_tarihi.split("T")[0] : "");
+  };
+
+  const handleDeleteDuyuru = async (id: string) => {
+    if (!confirm("Bu duyuruyu silmek istediğinize emin misiniz?")) return;
+    const { error } = await supabase.from("duyurular").delete().eq("id", id);
+    if (error) alert("Silinirken hata: " + error.message);
+    else { alert("Duyuru silindi!"); fetchDuyurular(); }
+  };
+
+  const resetDuyuruForm = () => {
+    setEditingDuyuruId(null);
+    setDuyuruAdi("");
+    setDuyuruIcerigi("");
+    setYayimlanmaTarihi("");
   };
 
   const handleSaveYarisma = async (e: React.FormEvent) => {
@@ -453,7 +512,7 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold tracking-wide text-emerald-400">
             Yönetici Paneli
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">Slider, üyeler, kitaplar ve yarışma yönetimini buradan yapabilirsiniz.</p>
+          <p className="text-xs text-zinc-400 mt-1">Slider, üyeler, kitaplar, yarışmalar ve duyurular yönetimini buradan yapabilirsiniz.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -506,6 +565,17 @@ export default function AdminPage() {
           }`}
         >
           <Trophy className="w-4 h-4" /> Yarışma Yönetimi ({yarismalar.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("duyurular")}
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer flex items-center gap-2 ${
+            activeTab === "duyurular"
+              ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
+              : "bg-zinc-900 text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Bell className="w-4 h-4" /> Duyurular ({duyurular.length})
         </button>
         <button
           type="button"
@@ -610,7 +680,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* GÜNCEL / GEÇMİŞ KONTROLÜ */}
               <div className="flex items-center gap-3 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
                 <input 
                   type="checkbox" 
@@ -621,7 +690,6 @@ export default function AdminPage() {
                 <label className="text-sm text-zinc-300">Bu kitabı "Güncel Okunan" olarak işaretle</label>
               </div>
 
-              {/* HTML TAKVİM INPUTU (DARK MODE UYUMLU) */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Son Tarih (Takvimden Seç)</label>
                 <input 
@@ -646,7 +714,6 @@ export default function AdminPage() {
                 <input type="text" value={bookToplantiBilgileri} onChange={(e) => setBookToplantiBilgileri(e.target.value)} placeholder="14 Ocak 2026 - Çevrim içi" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
               
-              {/* MEVCUT GÖRSEL ÖNİZLEMESİ VE DOSYA SEÇİMİ */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
                   Kitap Görseli Seç (Mevcudu değiştirmek istersen seç)
@@ -775,7 +842,6 @@ export default function AdminPage() {
             </div>
 
             <div className="lg:col-span-2 space-y-8">
-              {/* 1. AKTİF YARIŞMALAR */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
                   <Trophy className="w-5 h-5" /> Aktif Yarışmalar ({yarismalar.filter(y => y.durum === 'aktif').length})
@@ -801,7 +867,6 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* 2. BAŞVURU BİTEN / SONUÇ BEKLENENLER */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-amber-400 flex items-center gap-2">
                   <Clock className="w-5 h-5" /> Başvuru Biten / Sonuç Bekleyenler ({yarismalar.filter(y => y.durum === 'bitti').length})
@@ -827,7 +892,6 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* 3. SONUÇLANANLAR */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-blue-400 flex items-center gap-2">
                   <Award className="w-5 h-5" /> Sonuçlananlar ({yarismalar.filter(y => y.durum === 'sonuclandi').length})
@@ -854,7 +918,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* BAŞVURU İNCELEME LİSTESİ */}
           <div className="space-y-4 pt-6 border-t border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-200">Yarışma Başvuruları ({basvurular.length})</h2>
             {basvurular.length === 0 ? (
@@ -892,60 +955,68 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* KİTABA AİT YORUMLARI İNCELEME MODALI */}
-      {selectedBookForReviews && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
+      {/* 4. DUYURULAR YÖNETİMİ SEKMESİ */}
+      {activeTab === "duyurular" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
+            <h2 className="text-lg font-semibold mb-4 text-emerald-300 flex items-center gap-2">
+              {editingDuyuruId ? <Edit3 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {editingDuyuruId ? "Duyuruyu Düzenle" : "Yeni Duyuru Ekle"}
+            </h2>
+
+            <form onSubmit={handleSaveDuyuru} className="space-y-4">
               <div>
-                <h3 className="text-lg font-bold text-emerald-300">{selectedBookForReviews.baslik}</h3>
-                <p className="text-xs text-zinc-400">Kitap Yorumları ve Değerlendirmeleri</p>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Duyuru Adı *</label>
+                <input type="text" value={duyuruAdi} onChange={(e) => setDuyuruAdi(e.target.value)} placeholder="Örn: Yeni Sezon Duyurusu" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
               </div>
-              <button 
-                onClick={() => setSelectedBookForReviews(null)}
-                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Duyuru İçeriği *</label>
+                <textarea rows={4} value={duyuruIcerigi} onChange={(e) => setDuyuruIcerigi(e.target.value)} placeholder="Duyuru detayları..." className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yayımlanma Tarihi</label>
+                <input type="date" value={yayimlanmaTarihi} onChange={(e) => setYayimlanmaTarihi(e.target.value)} style={{ colorScheme: 'dark' }} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer" />
+              </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {kitapYorumlari.length === 0 ? (
-                <div className="text-center py-10 text-zinc-500 text-sm">
-                  Bu kitap için henüz yapılmış bir yorum bulunmuyor.
-                </div>
-              ) : (
-                kitapYorumlari.map((rev) => (
-                  <div key={rev.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex justify-between items-start gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">
-                          {rev.profiles?.isim || "İsimsiz"} {rev.profiles?.soyisim || "Üye"}
-                        </span>
-                        <span className="text-xs text-zinc-500">({rev.profiles?.email})</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
-                        <Star className="w-3.5 h-3.5 fill-emerald-400" /> {rev.puan} / 5 Yıldız
-                      </div>
-                      <p className="text-xs text-zinc-300 pt-1 leading-relaxed">{rev.yorum}</p>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer">
+                  <Save className="w-4 h-4" /> {editingDuyuruId ? "Güncelle" : "Ekle"}
+                </button>
+                {editingDuyuruId && (
+                  <button type="button" onClick={resetDuyuruForm} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Duyurular ({duyurular.length})</h2>
+            {duyurular.length === 0 ? (
+              <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">Henüz eklenmiş duyuru bulunmuyor.</div>
+            ) : (
+              <div className="space-y-3">
+                {duyurular.map((d) => (
+                  <div key={d.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">{d.duyuru_adi}</h3>
+                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{d.duyuru_icerigi}</p>
+                      <span className="text-[10px] text-emerald-400 mt-1 block">Tarih: {d.yayimlanma_tarihi ? new Date(d.yayimlanma_tarihi).toLocaleDateString("tr-TR") : "-"}</span>
                     </div>
-
-                    <button
-                      onClick={() => handleDeleteReviewByAdmin(rev.id)}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer flex-shrink-0"
-                      title="Yorumu Sil"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditDuyuru(d)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteDuyuru(d.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 4. ÜYE YÖNETİMİ */}
+      {/* 5. ÜYE YÖNETİMİ */}
       {activeTab === "users" && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Kulüp Üyeleri</h2>
@@ -1018,6 +1089,59 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* KİTABA AİT YORUMLARI İNCELEME MODALI */}
+      {selectedBookForReviews && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-emerald-300">{selectedBookForReviews.baslik}</h3>
+                <p className="text-xs text-zinc-400">Kitap Yorumları ve Değerlendirmeleri</p>
+              </div>
+              <button 
+                onClick={() => setSelectedBookForReviews(null)}
+                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {kitapYorumlari.length === 0 ? (
+                <div className="text-center py-10 text-zinc-500 text-sm">
+                  Bu kitap için henüz yapılmış bir yorum bulunmuyor.
+                </div>
+              ) : (
+                kitapYorumlari.map((rev) => (
+                  <div key={rev.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex justify-between items-start gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {rev.profiles?.isim || "İsimsiz"} {rev.profiles?.soyisim || "Üye"}
+                        </span>
+                        <span className="text-xs text-zinc-500">({rev.profiles?.email})</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                        <Star className="w-3.5 h-3.5 fill-emerald-400" /> {rev.puan} / 5 Yıldız
+                      </div>
+                      <p className="text-xs text-zinc-300 pt-1 leading-relaxed">{rev.yorum}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteReviewByAdmin(rev.id)}
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer flex-shrink-0"
+                      title="Yorumu Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

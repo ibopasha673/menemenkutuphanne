@@ -216,7 +216,7 @@ export default function KullaniciPaneli() {
 
         {/* =================================================
             ÜST BAŞLIK
-        ================================================ = */}
+        ================================================= */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 border-b border-zinc-800 pb-6">
 
           <div>
@@ -378,11 +378,19 @@ export default function KullaniciPaneli() {
                       Yarışma Durumu: <strong className="text-zinc-200 capitalize">{b.oyku_yarismalari?.durum || "Aktif"}</strong>
                     </span>
                   </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
-                    b.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  }`}>
-                    <CheckCircle className="w-3.5 h-3.5" /> {b.durum === 'onaylandi' ? 'Onaylandı' : 'Beklemede'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
+                      b.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      <CheckCircle className="w-3.5 h-3.5" /> {b.durum === 'onaylandi' ? 'Onaylandı' : 'Beklemede'}
+                    </span>
+                    <Link
+                      href="/yarismalar"
+                      className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-semibold rounded-xl border border-emerald-500/30 transition"
+                    >
+                      Düzenle
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>

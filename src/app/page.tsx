@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { BookOpen, LogOut, User as UserIcon, FileText } from "lucide-react";
+import { BookOpen, LogOut, User as UserIcon, FileText, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -17,9 +17,17 @@ type UserProfile = {
   soyisim: string | null;
 };
 
+type DuyuruItem = {
+  id: string;
+  duyuru_adi: string;
+  duyuru_icerigi: string;
+  yayimlanma_tarihi: string;
+};
+
 export default function Home() {
   const [sliders, setSliders] = useState<SliderItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [duyurular, setDuyurular] = useState<DuyuruItem[]>([]);
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -131,6 +139,16 @@ export default function Home() {
           },
         ]);
       }
+
+      // =====================================================
+      // DUYURULAR
+      // =====================================================
+      const { data: duyuruData } = await supabase
+        .from("duyurular")
+        .select("*")
+        .order("created_time", { ascending: false });
+      
+      if (duyuruData) setDuyurular(duyuruData);
     };
 
     initialize();
@@ -321,32 +339,55 @@ export default function Home() {
       </header>
 
       {/* =====================================================
-          SLIDER
+          SLIDER & DUYURULAR
       ====================================================== */}
-      <main className="relative w-full h-screen flex items-center justify-center">
-        {sliders.length > 0 && (
-          <div className="absolute inset-0 w-full h-full overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40 z-10" />
+      <main className="relative w-full min-h-screen flex flex-col items-center">
+        <div className="absolute inset-0 w-full h-[60vh] overflow-hidden">
+          {sliders.length > 0 && (
+            <div className="absolute inset-0 w-full h-full">
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/30 to-black/40 z-10" />
+              <img
+                src={sliders[currentIndex].gorsel_url}
+                alt="Slider Görseli"
+                className="w-full h-full object-cover scale-105 transition-transform duration-1000"
+              />
+            </div>
+          )}
+        </div>
 
-            <img
-              src={sliders[currentIndex].gorsel_url}
-              alt="Slider Görseli"
-              className="w-full h-full object-cover scale-105 transition-transform duration-1000"
-            />
-
-            {/* SLOGAN */}
-            {sliders[currentIndex].slogan && (
-              <div className="absolute bottom-20 md:bottom-24 left-4 md:left-10 right-4 md:right-auto z-20 max-w-lg bg-black/60 backdrop-blur-md p-4 md:p-6 rounded-2xl border-l-4 border-emerald-400 shadow-2xl">
-                <p className="text-base md:text-xl font-light italic text-emerald-100 tracking-wide drop-shadow">
-                  "{sliders[currentIndex].slogan}"
-                </p>
+        {/* DUYURU PANELI */}
+        <div className="relative z-20 w-full max-w-4xl px-4 mt-[35vh]">
+          {duyurular.length > 0 && (
+            <div className="bg-zinc-900/80 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-zinc-800 shadow-2xl mb-8">
+              <h2 className="text-emerald-400 font-bold flex items-center gap-2 mb-6 text-xl">
+                <Bell className="w-6 h-6"/> Güncel Duyurular
+              </h2>
+              <div className="space-y-6">
+                {duyurular.map(d => (
+                  <div key={d.id} className="border-l-4 border-emerald-500 pl-6">
+                    <h3 className="font-semibold text-lg text-white">{d.duyuru_adi}</h3>
+                    <p className="text-sm text-zinc-400 mt-1">{d.duyuru_icerigi}</p>
+                    <span className="text-[10px] text-zinc-600 mt-2 block uppercase">{d.yayimlanma_tarihi ? new Date(d.yayimlanma_tarihi).toLocaleDateString("tr-TR") : "-"}</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+
+        {/* SLOGAN (Eski Slider Sloganı) */}
+        {sliders.length > 0 && sliders[currentIndex].slogan && (
+           <div className="relative z-20 w-full max-w-lg px-4 -mt-20">
+             <div className="bg-black/40 backdrop-blur-md p-6 rounded-2xl border-l-4 border-emerald-400 shadow-2xl">
+               <p className="text-base md:text-xl font-light italic text-emerald-100 tracking-wide drop-shadow">
+                 "{sliders[currentIndex].slogan}"
+               </p>
+             </div>
+           </div>
         )}
 
         {/* SLIDER NOKTALARI */}
-        <div className="absolute bottom-8 md:bottom-24 right-4 md:right-10 z-30 flex gap-2.5 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+        <div className="absolute bottom-10 z-30 flex gap-2.5 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
           {sliders.map((_, index) => (
             <button
               key={index}
@@ -370,39 +411,13 @@ export default function Home() {
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 text-[11px] text-zinc-500">
-          <a
-            href="#"
-            className="hover:text-emerald-400 transition-colors"
-          >
-            KVKK Aydınlatma Metni
-          </a>
-
+          <a href="#" className="hover:text-emerald-400 transition-colors">KVKK Aydınlatma Metni</a>
           <span className="hidden md:inline">•</span>
-
-          <a
-            href="#"
-            className="hover:text-emerald-400 transition-colors"
-          >
-            Gizlilik Politikası
-          </a>
-
+          <a href="#" className="hover:text-emerald-400 transition-colors">Gizlilik Politikası</a>
           <span className="hidden md:inline">•</span>
-
-          <a
-            href="#"
-            className="hover:text-emerald-400 transition-colors"
-          >
-            Çerez Politikası
-          </a>
-
+          <a href="#" className="hover:text-emerald-400 transition-colors">Çerez Politikası</a>
           <span className="hidden md:inline">•</span>
-
-          <Link
-            href="/admin-giris"
-            className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400"
-          >
-            Yönetici Paneli
-          </Link>
+          <Link href="/admin-giris" className="hover:text-emerald-400 transition-colors font-semibold text-zinc-400">Yönetici Paneli</Link>
         </div>
       </footer>
     </div>
