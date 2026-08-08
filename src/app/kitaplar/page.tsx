@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3, BookmarkPlus, Play, Check } from "lucide-react";
 import Link from "next/link";
 
 export default function KitaplarPage() {
@@ -21,6 +21,11 @@ export default function KitaplarPage() {
   const [puan, setPuan] = useState<number>(5);
   const [yorumMetni, setYorumMetni] = useState("");
   const [kitapYorumlari, setKitapYorumlari] = useState<{ [key: string]: any[] }>({});
+
+  // Sayfa güncelleme input state'leri
+  const [sayfaInputlari, setSayfaInputlari] = useState<{ [key: string]: number }>({});
+  // Geri sayım state'i
+  const [kalanSureler, setKalanSureler] = useState<{ [key: string]: string }>({});
 
   const router = useRouter();
 
@@ -50,6 +55,41 @@ export default function KitaplarPage() {
     checkAuthAndFetch();
   }, [router]);
 
+  // Geri sayım sayacı mantığı
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const yeniSureler: { [key: string]: string } = {};
+      guncelKitaplar.forEach(item => {
+        if (item.son_okuma_tarihi) {
+          const hedef = new Date(item.son_okuma_tarihi).getTime();
+          const simdi = new Date().getTime();
+          const fark = hedef - simdi;
+
+          if (fark <= 0) {
+            yeniSureler[item.id] = "Süre Doldu!";
+            // Süre bittiyse otomatik geçmişe taşı (durum = false)
+            otomatikGecmiseTasi(item.book_id, item.id);
+          } else {
+            const gun = Math.floor(fark / (1000 * 60 * 60 * 24));
+            const saat = Math.floor((fark % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const dakika = Math.floor((fark % (1000 * 60 * 60)) / (1000 * 60));
+            const saniye = Math.floor((fark % (1000 * 60)) / 1000);
+            yeniSureler[item.id] = `${gun}g ${saat}s ${dakika}d ${saniye}s`;
+          }
+        }
+      });
+      setKalanSureler(yeniSureler);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [guncelKitaplar]);
+
+  async function otomatikGecmiseTasi(bookId: string, rowId: string) {
+    await supabase.from("books").update({ durum: false }).eq("id", bookId);
+    await supabase.from("okunmakta_olan_kitaplar").delete().eq("id", rowId);
+    veriCek();
+  }
+
   async function veriCek() {
     // durum = false olanlar Geçmişte Okunanlar
     const { data: gecmisData } = await supabase
@@ -58,32 +98,75 @@ export default function KitaplarPage() {
       .eq("durum", false);
     if (gecmisData) setGecmisKitaplar(gecmisData);
 
-    // durum = true olanlar Okunmakta Olanlar
+    // Okunmakta olanlar tablosu çekimi (books ile join)
     const { data: guncelData } = await supabase
-      .from("books")
-      .select("*")
-      .eq("durum", true);
-    if (guncelData) setGuncelKitaplar(guncelData);
+      .from("okunmakta_olan_kitaplar")
+      .select(`*, books:book_id (*)`);
+    if (guncelData) {
+      setGuncelKitaplar(guncelData);
+      const initialSayfalar: { [key: string]: number } = {};
+      guncelData.forEach(item => {
+        initialSayfalar[item.id] = item.okunan_sayfa_sayisi || 0;
+      });
+      setSayfaInputlari(initialSayfalar);
+    }
   }
 
-  // Kitabı okunmakta olanlara taşıma (durum = true yapma ve süre ekleme)
-  const handleKitapSec = async (bookId: string) => {
-    // Son gün / son tarihten 1 gün sonrasının 00.00'ına kadar kalan süre hesaplaması veya tarih güncellemesi
+  // Kitabı okunmakta olanlara ekleme (durum = true yap ve okunmakta_olan_kitaplar tablosuna ekle)
+  const handleKitapSec = async (book: any) => {
+    // Son gün / son tarihten 1 gün sonrasının 00.00'ına kadar kalan süre hesabı
     const yarin = new Date();
     yarin.setDate(yarin.getDate() + 1);
     yarin.setHours(0, 0, 0, 0);
-    const tarihStr = yarin.toISOString().split('T')[0];
+    const tarihStr = yarin.toISOString();
 
-    const { error } = await supabase
-      .from("books")
-      .update({ durum: true, son_tarih: tarihStr })
-      .eq("id", bookId);
+    // Books durumunu true yap
+    await supabase.from("books").update({ durum: true }).eq("id", book.id);
+
+    // Okunmakta olanlar tablosuna ekle
+    const { error } = await supabase.from("okunmakta_olan_kitaplar").insert([
+      {
+        book_id: book.id,
+        user_id: userId,
+        okunan_sayfa_sayisi: 0,
+        son_okuma_tarihi: tarihStr
+      }
+    ]);
 
     if (error) {
       alert("Kitap seçilirken hata oluştu: " + error.message);
     } else {
-      alert("Kitap başarıyla okunmakte olanlara eklendi!");
+      alert("Kitap okunmakta olanlara eklendi!");
       veriCek();
+    }
+  };
+
+  // Okunan sayfa miktarını güncelleme ve kontrol (Toplam sayfayı geçemez)
+  const handleSayfaGuncelle = async (item: any) => {
+    const girilenSayfa = Number(sayfaInputlari[item.id]) || 0;
+    const toplamSayfa = item.books?.toplam_sayfa || 99999;
+
+    if (girilenSayfa > toplamSayfa) {
+      alert(`Okunan sayfa miktarı toplam sayfa sayısından (${toplamSayfa}) büyük olamaz!`);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("okunmakta_olan_kitaplar")
+      .update({ okunan_sayfa_sayisi: girilenSayfa })
+      .eq("id", item.id);
+
+    if (error) {
+      alert("Sayfa güncellenirken hata oluştu: " + error.message);
+    } else {
+      alert("Okunan sayfa başarıyla güncellendi!");
+      // Eğer kitap bittiyse (okunan sayfa == toplam sayfa) otomatik geçmişe atabiliriz veya kullanıcı bitir diyebilir
+      if (girilenSayfa >= toplamSayfa) {
+        otomatikGecmiseTasi(item.book_id, item.id);
+        alert("Tebrikler, kitabı tamamladınız! Geçmiş arşivine taşındı.");
+      } else {
+        veriCek();
+      }
     }
   };
 
@@ -230,7 +313,10 @@ export default function KitaplarPage() {
 
         {/* LİSTELEME */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {(aktifSekme === "guncel" ? guncelKitaplar : gecmisKitaplar).map((book: any) => {
+          {(aktifSekme === "guncel" 
+            ? guncelKitaplar.map(item => ({ ...item.books, rowId: item.id, okunan_sayfa_sayisi: item.okunan_sayfa_sayisi, itemData: item })) 
+            : gecmisKitaplar
+          ).map((book: any) => {
             if (!book) return null;
             const realBookId = book.id;
             const ortalama = getOrtalamaPuan(realBookId);
@@ -268,16 +354,54 @@ export default function KitaplarPage() {
                           <span>{ortalama}</span>
                         </div>
                       </div>
-                      
-                      {/* Kitap Seç / Okunmakta Olanlara Ekle Butonu (Geçmiş sekmesindeyse veya durum false ise gösterilebilir) */}
-                      {!book.durum && (
+
+                      {/* EĞER GEÇMİŞ SEKMEDEYSE (KİTAP SEÇ / OKUNMAKTAYA EKLE) */}
+                      {aktifSekme === "gecmis" && !book.durum && (
                         <button
-                          onClick={() => handleKitapSec(book.id)}
-                          className="mt-3 px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                          onClick={() => handleKitapSec(book)}
+                          className="mt-3 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
                         >
-                          <BookmarkPlus className="w-3.5 h-3.5" /> Bunu Okuyorum Olarak Seç
+                          <BookmarkPlus className="w-3.5 h-3.5" /> Bu Kitabı Seç (Okunmakta Olanlara Ekle)
                         </button>
                       )}
+
+                      {/* EĞER GÜNCEL SEKMEDEYSE (SAYAÇ VE SAYFA GÜNCELLEME ALANI) */}
+                      {aktifSekme === "guncel" && (
+                        <div className="mt-3 space-y-2 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800">
+                          <div className="flex items-center justify-between text-xs text-zinc-300">
+                            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                              <Clock className="w-3.5 h-3.5" /> Geri Sayım:
+                            </span>
+                            <span className="font-mono text-emerald-300">
+                              {kalanSureler[book.rowId] || "Hesaplanıyor..."}
+                            </span>
+                          </div>
+
+                          <div className="pt-2 border-t border-zinc-800 flex flex-col gap-1.5">
+                            <div className="flex justify-between text-[11px] text-zinc-400">
+                              <span>Okunan Sayfa: {book.okunan_sayfa_sayisi || 0} / {book.toplam_sayfa || "?"}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                max={book.toplam_sayfa}
+                                min={0}
+                                value={sayfaInputlari[book.rowId] ?? (book.okunan_sayfa_sayisi || 0)}
+                                onChange={(e) => setSayfaInputlari({ ...sayfaInputlari, [book.rowId]: Number(e.target.value) })}
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-emerald-500"
+                                placeholder="Sayfa gir"
+                              />
+                              <button
+                                onClick={() => handleSayfaGuncelle(book.itemData)}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer flex-shrink-0"
+                              >
+                                Güncelle
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
 
