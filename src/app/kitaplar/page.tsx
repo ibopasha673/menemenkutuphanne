@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3, BookmarkPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function KitaplarPage() {
@@ -22,6 +22,8 @@ export default function KitaplarPage() {
   const [yorumMetni, setYorumMetni] = useState("");
   const [kitapYorumlari, setKitapYorumlari] = useState<{ [key: string]: any[] }>({});
 
+  // Kullanıcının okuduğu kitapların kayıtları (book_id -> kayıt objesi)
+  const [kullaniciKitaplari, setKullaniciKitaplari] = useState<{ [key: string]: any }>({});
   // Sayfa güncelleme input state'leri
   const [sayfaInputlari, setSayfaInputlari] = useState<{ [key: string]: number }>({});
   // Geri sayım state'i
@@ -49,19 +51,18 @@ export default function KitaplarPage() {
       }
 
       setLoading(false);
-      veriCek();
+      veriCek(session.user.id);
       tumYorumlariCek();
     }
     checkAuthAndFetch();
   }, [router]);
 
-  // Geri sayım sayacı mantığı (books tablosundaki son_tarih alanına göre)
+  // Geri sayım sayacı mantığı
   useEffect(() => {
     const timer = setInterval(() => {
       const yeniSureler: { [key: string]: string } = {};
       guncelKitaplar.forEach(book => {
         if (book.son_tarih) {
-          // Son gün / son tarihten 1 gün sonrasının 00.00'ına kadar kalan süre
           const hedefTarih = new Date(book.son_tarih);
           hedefTarih.setDate(hedefTarih.getDate() + 1);
           hedefTarih.setHours(0, 0, 0, 0);
@@ -87,15 +88,17 @@ export default function KitaplarPage() {
     return () => clearInterval(timer);
   }, [guncelKitaplar]);
 
-  async function veriCek() {
-    // durum = false olanlar Geçmişte Okunanlar (Arşiv)
+  async function veriCek(currentUserId?: string) {
+    const uid = currentUserId || userId;
+
+    // Geçmişte okunanlar
     const { data: gecmisData } = await supabase
       .from("books")
       .select("*")
       .eq("durum", false);
     if (gecmisData) setGecmisKitaplar(gecmisData);
 
-    // durum = true olanlar Admin tarafından güncel yapılmış (Okunmakta Olanlar) kitaplar
+    // Güncel kitaplar (Admin'in aktif ettikleri)
     const { data: guncelData } = await supabase
       .from("books")
       .select("*")
@@ -104,40 +107,29 @@ export default function KitaplarPage() {
     if (guncelData) {
       setGuncelKitaplar(guncelData);
 
-      // Kullanıcının bu kitaplar için daha önce girdiği sayfa sayılarını okunmakta_olan_kitaplar tablosundan çekelim
-      if (userId) {
+      if (uid) {
         const { data: userProgress } = await supabase
           .from("okunmakta_olan_kitaplar")
           .select("*")
-          .eq("user_id", userId);
+          .eq("user_id", uid);
 
         if (userProgress) {
-          const initialSayfalar: { [key: string]: number } = {};
+          const map: { [key: string]: any } = {};
+          const sayfalar: { [key: string]: number } = {};
           userProgress.forEach(item => {
-            initialSayfalar[item.book_id] = item.okunan_sayfa_sayisi || 0;
+            map[item.book_id] = item;
+            sayfalar[item.book_id] = item.okunan_sayfa_sayisi || 0;
           });
-          setSayfaInputlari(initialSayfalar);
+          setKullaniciKitaplari(map);
+          setSayfaInputlari(sayfalar);
         }
       }
     }
   }
 
-  // Kullanıcının "Bu Kitabı Seç / Okuyorum" butonuna basması ve okunmakta_olan_kitaplar tablosuna kaydetmesi
+  // Kitabı seçme (Okunmakta olanlara ekleme)
   const handleKitapSec = async (bookId: string) => {
     if (!userId) return;
-
-    // Önce bu kullanıcı için bu kitap daha önce eklenmiş mi kontrol et
-    const { data: existing } = await supabase
-      .from("okunmakta_olan_kitaplar")
-      .select("id")
-      .eq("book_id", bookId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (existing) {
-      alert("Bu kitabı zaten okumaya başladınız!");
-      return;
-    }
 
     const { error } = await supabase.from("okunmakta_olan_kitaplar").insert([
       {
@@ -150,15 +142,30 @@ export default function KitaplarPage() {
     if (error) {
       alert("Kitap seçilirken hata oluştu: " + error.message);
     } else {
-      alert("Kitap okunmakta olanlar listenize eklendi!");
+      alert("Kitap seçildi! Artık sayfa güncelleyebilirsiniz.");
       veriCek();
     }
   };
 
-  // Okunan sayfa miktarını güncelleme ve kontrol (Toplam sayfayı asla geçemez)
-  const handleSayfaGuncelle = async (book: any) => {
-    if (!userId) return;
+  // Pess Et (Kitabı bırak / tablodan sil)
+  const handlePessEt = async (recordId: string) => {
+    if (!confirm("Bu kitabı okumaktan vazgeçmek (pess etmek) istediğinize emin misiniz?")) return;
 
+    const { error } = await supabase
+      .from("okunmakta_olan_kitaplar")
+      .delete()
+      .eq("id", recordId);
+
+    if (error) {
+      alert("İşlem sırasında hata oluştu: " + error.message);
+    } else {
+      alert("Kitap listeden kaldırıldı.");
+      veriCek();
+    }
+  };
+
+  // Sayfa güncelleme ve toplam sayfa kontrolü
+  const handleSayfaGuncelle = async (book: any, userRecordId: string) => {
     const girilenSayfa = Number(sayfaInputlari[book.id]) || 0;
     const toplamSayfa = book.toplam_sayfa || 99999;
 
@@ -167,45 +174,20 @@ export default function KitaplarPage() {
       return;
     }
 
-    // Önce okunmakta_olan_kitaplar tablosunda bu kullanıcıya ait kayıt var mı bakalım
-    const { data: existing } = await supabase
+    const { error } = await supabase
       .from("okunmakta_olan_kitaplar")
-      .select("id")
-      .eq("book_id", book.id)
-      .eq("user_id", userId)
-      .maybeSingle();
+      .update({ okunan_sayfa_sayisi: girilenSayfa })
+      .eq("id", userRecordId);
 
-    if (!existing) {
-      // Kayıt yoksa önce ekleyip sonra güncelleyelim
-      const { error: insertError } = await supabase.from("okunmakta_olan_kitaplar").insert([
-        {
-          book_id: book.id,
-          user_id: userId,
-          okunan_sayfa_sayisi: girilenSayfa,
-        }
-      ]);
-      if (insertError) {
-        alert("Sayfa kaydedilirken hata oluştu: " + insertError.message);
-        return;
-      }
+    if (error) {
+      alert("Sayfa güncellenirken hata oluştu: " + error.message);
     } else {
-      // Kayıt varsa güncelle
-      const { error: updateError } = await supabase
-        .from("okunmakta_olan_kitaplar")
-        .update({ okunan_sayfa_sayisi: girilenSayfa })
-        .eq("id", existing.id);
-
-      if (updateError) {
-        alert("Sayfa güncellenirken hata oluştu: " + updateError.message);
-        return;
+      alert("Okunan sayfa başarıyla güncellendi!");
+      if (girilenSayfa >= toplamSayfa) {
+        alert("Tebrikler, bu kitabı tamamen bitirdiniz!");
       }
+      veriCek();
     }
-
-    alert("Okunan sayfa başarıyla güncellendi!");
-    if (girilenSayfa >= toplamSayfa) {
-      alert("Tebrikler, bu kitabı tamamen bitirdiniz!");
-    }
-    veriCek();
   };
 
   async function tumYorumlariCek() {
@@ -358,6 +340,7 @@ export default function KitaplarPage() {
             const kitapYorumlariListesi = kitapYorumlari[realBookId] || [];
             
             const userReview = kitapYorumlariListesi.find((r: any) => r.user_id === userId);
+            const kullaniciSecimi = kullaniciKitaplari[book.id]; // Kullanıcı bu kitabı seçti mi?
 
             return (
               <div key={book.id || Math.random()} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
@@ -390,49 +373,60 @@ export default function KitaplarPage() {
                         </div>
                       </div>
 
-                      {/* GÜNCEL SEKMEDEYSE: KİTAP SEÇ / SAYAC VE SAYFA GÜNCELLEME */}
+                      {/* GÜNCEL SEKMEDEYSE: HER ZAMAN GERİ SAYIM + SEÇME VEYA GÜNCELLEME/PESS ET */}
                       {aktifSekme === "guncel" && (
                         <div className="mt-3 space-y-3">
-                          <button
-                            onClick={() => handleKitapSec(book.id)}
-                            className="w-full py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <BookmarkPlus className="w-3.5 h-3.5" /> Bu Kitabı Okuyorum Olarak Seç
-                          </button>
+                          {/* Geri Sayım Kutusu (Her zaman görünür) */}
+                          <div className="bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800 flex items-center justify-between text-xs text-zinc-300">
+                            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                              <Clock className="w-3.5 h-3.5" /> Geri Sayım:
+                            </span>
+                            <span className="font-mono text-emerald-300">
+                              {kalanSureler[book.id] || "Hesaplanıyor..."}
+                            </span>
+                          </div>
 
-                          <div className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800 space-y-2">
-                            <div className="flex items-center justify-between text-xs text-zinc-300">
-                              <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-                                <Clock className="w-3.5 h-3.5" /> Geri Sayım:
-                              </span>
-                              <span className="font-mono text-emerald-300">
-                                {kalanSureler[book.id] || "Hesaplanıyor..."}
-                              </span>
-                            </div>
-
-                            <div className="pt-2 border-t border-zinc-800 flex flex-col gap-1.5">
+                          {!kullaniciSecimi ? (
+                            // Kitap seçilmediyse sadece "Bu Kitabı Okuyorum Olarak Seç" butonu görünür
+                            <button
+                              onClick={() => handleKitapSec(book.id)}
+                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                            >
+                              <BookmarkPlus className="w-3.5 h-3.5" /> Bu Kitabı Okuyorum Olarak Seç
+                            </button>
+                          ) : (
+                            // Kitap seçildiyse sayfa güncelleme alanı ve Pess Et butonu görünür
+                            <div className="bg-zinc-950/80 p-3 rounded-xl border border-emerald-500/30 space-y-2">
                               <div className="flex justify-between text-[11px] text-zinc-400">
                                 <span>Toplam Sayfa: {book.toplam_sayfa || "?"}</span>
+                                <span className="text-emerald-400 font-medium">Okunuyor</span>
                               </div>
                               <div className="flex gap-2">
                                 <input
                                   type="number"
                                   max={book.toplam_sayfa}
                                   min={0}
-                                  value={sayfaInputlari[book.id] ?? 0}
+                                  value={sayfaInputlari[book.id] ?? kullaniciSecimi.okunan_sayfa_sayisi}
                                   onChange={(e) => setSayfaInputlari({ ...sayfaInputlari, [book.id]: Number(e.target.value) })}
                                   className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-emerald-500"
-                                  placeholder="Okunan sayfa"
+                                  placeholder="Sayfa gir"
                                 />
                                 <button
-                                  onClick={() => handleSayfaGuncelle(book)}
+                                  onClick={() => handleSayfaGuncelle(book, kullaniciSecimi.id)}
                                   className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer flex-shrink-0"
                                 >
                                   Güncelle
                                 </button>
                               </div>
+
+                              <button
+                                onClick={() => handlePessEt(kullaniciSecimi.id)}
+                                className="w-full mt-1 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[11px] font-semibold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <XCircle className="w-3.5 h-3.5" /> Pess Et (Bırak)
+                              </button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
 
