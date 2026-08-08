@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -63,6 +63,10 @@ export default function AdminPage() {
   const [bookFile, setBookFile] = useState<File | null>(null);
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
+  // Admin Yorum İnceleme States
+  const [selectedBookForReviews, setSelectedBookForReviews] = useState<BookItem | null>(null);
+  const [kitapYorumlari, setKitapYorumlari] = useState<any[]>([]);
+
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -118,6 +122,36 @@ export default function AdminPage() {
     }
   };
 
+  const fetchBookReviews = async (bookId: string) => {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*, profiles:user_id (isim, soyisim, email)")
+      .eq("book_id", bookId);
+
+    if (!error) {
+      setKitapYorumlari(data || []);
+    }
+  };
+
+  const handleOpenReviewsModal = (book: BookItem) => {
+    setSelectedBookForReviews(book);
+    fetchBookReviews(book.id);
+  };
+
+  const handleDeleteReviewByAdmin = async (reviewId: string) => {
+    if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;
+
+    const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+    if (error) {
+      alert("Yorum silinirken hata oluştu: " + error.message);
+    } else {
+      alert("Yorum başarıyla silindi!");
+      if (selectedBookForReviews) {
+        fetchBookReviews(selectedBookForReviews.id);
+      }
+    }
+  };
+
   // Kitap Ekleme / Güncelleme (Dosya Yükleme Destekli)
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +159,6 @@ export default function AdminPage() {
 
     let finalGorselUrl = "";
 
-    // GÖRSEL YÜKLEME KISMI
     if (bookFile) {
       const fileExt = bookFile.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
@@ -241,7 +274,6 @@ export default function AdminPage() {
     }
   };
 
-  // Blog Yetkisini Güncelleme
   const toggleBlogPermission = async (userId: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from("profiles")
@@ -255,7 +287,6 @@ export default function AdminPage() {
     }
   };
 
-  // Üyeyi Silme
   const handleDeleteUser = async (userId: string) => {
     if (!confirm("Bu üyeyi sistemden kalıcı olarak silmek istediğinize emin misiniz?")) return;
 
@@ -517,7 +548,7 @@ export default function AdminPage() {
             {books.length === 0 ? <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">Henüz eklenmiş kitap bulunmuyor.</div> : (
               <div className="space-y-3">
                 {books.map((book) => (
-                  <div key={book.id} className="flex items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                  <div key={book.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
                     <div className="flex items-center gap-4">
                       {book.kapak_gorseli ? (
                         <img src={book.kapak_gorseli} alt={book.baslik} className="w-14 h-20 rounded-xl object-cover border border-zinc-800" />
@@ -538,14 +569,74 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleEditBook(book)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer"><Edit3 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteBook(book.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                      <button 
+                        onClick={() => handleOpenReviewsModal(book)} 
+                        className="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 rounded-xl transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                        title="Kitap Yorumları"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Yorumlar
+                      </button>
+                      <button onClick={() => handleEditBook(book)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteBook(book.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* KİTABA AİT YORUMLARI İNCELEME MODALI */}
+      {selectedBookForReviews && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-emerald-300">{selectedBookForReviews.baslik}</h3>
+                <p className="text-xs text-zinc-400">Kitap Yorumları ve Değerlendirmeleri</p>
+              </div>
+              <button 
+                onClick={() => setSelectedBookForReviews(null)}
+                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {kitapYorumlari.length === 0 ? (
+                <div className="text-center py-10 text-zinc-500 text-sm">
+                  Bu kitap için henüz yapılmış bir yorum bulunmuyor.
+                </div>
+              ) : (
+                kitapYorumlari.map((rev) => (
+                  <div key={rev.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex justify-between items-start gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {rev.profiles?.isim || "İsimsiz"} {rev.profiles?.soyisim || "Üye"}
+                        </span>
+                        <span className="text-xs text-zinc-500">({rev.profiles?.email})</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                        <Star className="w-3.5 h-3.5 fill-emerald-400" /> {rev.puan} / 5 Yıldız
+                      </div>
+                      <p className="text-xs text-zinc-300 pt-1 leading-relaxed">{rev.yorum}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteReviewByAdmin(rev.id)}
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer flex-shrink-0"
+                      title="Yorumu Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
