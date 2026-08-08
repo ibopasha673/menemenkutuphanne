@@ -523,13 +523,14 @@ export default function AdminPage() {
                 <label className="text-sm text-zinc-300">Bu kitabı "Güncel Okunan" olarak işaretle</label>
               </div>
 
-              {/* TAKVİMDEN TARİH SEÇME */}
+              {/* HTML TAKVİM INPUTU (DARK MODE UYUMLU) */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Son Tarih (Takvimden Seç)</label>
                 <input 
                   type="date" 
                   value={bookSonTarih} 
                   onChange={(e) => setBookSonTarih(e.target.value)} 
+                  style={{ colorScheme: 'dark' }}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer" 
                 />
               </div>
