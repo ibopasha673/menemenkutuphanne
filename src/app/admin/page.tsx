@@ -70,13 +70,14 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
 
-  // Slider States
-  const [gorselUrl, setGorselUrl] = useState("");
+  // Slider Form States (Dosya yükleme için güncellendi)
+  const [sliderFile, setSliderFile] = useState<File | null>(null);
+  const [existingSliderGorsel, setExistingSliderGorsel] = useState("");
   const [slogan, setSlogan] = useState("");
   const [sira, setSira] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Book States
+  // Book Form States
   const [bookBaslik, setBookBaslik] = useState("");
   const [bookYazar, setBookYazar] = useState("");
   const [bookToplamSayfa, setBookToplamSayfa] = useState<number>(100);
@@ -440,49 +441,84 @@ export default function AdminPage() {
     }
   };
 
+  // SLIDER YÖNETİMİ (Sliders bucket'ına dosya yükleme eklendi)
   const handleSaveSlider = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gorselUrl) {
-      alert("Lütfen bir görsel URL adresi girin!");
+    setLoading(true);
+
+    let finalGorselUrl = existingSliderGorsel;
+
+    if (sliderFile) {
+      const fileExt = sliderFile.name.split(".").pop();
+      const fileName = `slider_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("sliders")
+        .upload(filePath, sliderFile);
+
+      if (uploadError) {
+        alert("Slider görseli yüklenirken hata oluştu: " + uploadError.message);
+        setLoading(false);
+        return;
+      }
+
+      const { data: publicURLData } = supabase.storage
+        .from("sliders")
+        .getPublicUrl(filePath);
+
+      finalGorselUrl = publicURLData.publicUrl;
+    }
+
+    if (!finalGorselUrl) {
+      alert("Lütfen bir slider görseli seçin!");
+      setLoading(false);
       return;
     }
 
     if (editingId) {
       const { error } = await supabase
         .from("sliders")
-        .update({ gorsel_url: gorselUrl, slogan, sira })
+        .update({ gorsel_url: finalGorselUrl, slogan, sira })
         .eq("id", editingId);
 
       if (error) {
         alert("Güncellenirken hata oluştu: " + error.message);
       } else {
-        setEditingId(null);
-        setGorselUrl("");
-        setSlogan("");
-        setSira(0);
+        alert("Slider güncellendi!");
+        resetSliderForm();
         fetchSliders();
       }
     } else {
       const { error } = await supabase
         .from("sliders")
-        .insert([{ gorsel_url: gorselUrl, slogan, sira }]);
+        .insert([{ gorsel_url: finalGorselUrl, slogan, sira }]);
 
       if (error) {
         alert("Eklenirken hata oluştu: " + error.message);
       } else {
-        setGorselUrl("");
-        setSlogan("");
-        setSira(0);
+        alert("Slider eklendi!");
+        resetSliderForm();
         fetchSliders();
       }
     }
+    setLoading(false);
   };
 
   const handleEditSlider = (item: SliderItem) => {
     setEditingId(item.id);
-    setGorselUrl(item.gorsel_url);
+    setExistingSliderGorsel(item.gorsel_url);
     setSlogan(item.slogan || "");
     setSira(item.sira);
+    setSliderFile(null);
+  };
+
+  const resetSliderForm = () => {
+    setEditingId(null);
+    setExistingSliderGorsel("");
+    setSliderFile(null);
+    setSlogan("");
+    setSira(0);
   };
 
   const handleDeleteSlider = async (id: string) => {
@@ -590,7 +626,7 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* 1. SLİDER YÖNETİMİ */}
+      {/* 1. SLİDER YÖNETİMİ (DOSYA SEÇME ÖZELLİKLİ) */}
       {activeTab === "sliders" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
@@ -601,9 +637,23 @@ export default function AdminPage() {
 
             <form onSubmit={handleSaveSlider} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Görsel URL</label>
-                <input type="text" value={gorselUrl} onChange={(e) => setGorselUrl(e.target.value)} placeholder="https://..." className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                  Slider Görseli Dosyası *
+                </label>
+                {existingSliderGorsel && (
+                  <div className="mb-2 flex items-center gap-3 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                    <img src={existingSliderGorsel} alt="Mevcut Slider" className="w-14 h-10 object-cover rounded-md" />
+                    <span className="text-xs text-zinc-400">Mevcut görsel yüklü</span>
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => setSliderFile(e.target.files?.[0] || null)} 
+                  className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" 
+                />
               </div>
+
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Slogan Metni</label>
                 <textarea value={slogan} onChange={(e) => setSlogan(e.target.value)} placeholder="Slider sloganı..." rows={3} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
@@ -614,11 +664,11 @@ export default function AdminPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer">
+                <button type="submit" disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 transition py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
                   <Save className="w-4 h-4" /> {editingId ? "Güncelle" : "Ekle"}
                 </button>
                 {editingId && (
-                  <button type="button" onClick={() => { setEditingId(null); setGorselUrl(""); setSlogan(""); setSira(0); }} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
+                  <button type="button" onClick={resetSliderForm} className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2.5 rounded-xl text-sm flex items-center justify-center cursor-pointer">
                     <X className="w-4 h-4" />
                   </button>
                 )}
