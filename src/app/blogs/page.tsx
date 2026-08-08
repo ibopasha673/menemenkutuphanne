@@ -31,8 +31,10 @@ export default function BlogsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [blogIsmi, setBlogIsmi] = useState("");
   const [blogIcerigi, setBlogIcerigi] = useState("");
-  const [blogFotografi, setBlogFotografi] = useState("");
+  const [blogFile, setBlogFile] = useState<File | null>(null);
+  const [existingBlogFotografi, setExistingBlogFotografi] = useState("");
   const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
 
@@ -75,12 +77,38 @@ export default function BlogsPage() {
   const handleSaveBlog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
+    setSubmitting(true);
+
+    let finalFotografiUrl = existingBlogFotografi;
+
+    // Eğer yeni dosya seçildiyse 'blogs' bucket'ına yükle
+    if (blogFile) {
+      const fileExt = blogFile.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("blogs")
+        .upload(filePath, blogFile);
+
+      if (uploadError) {
+        alert("Fotoğraf yüklenirken hata oluştu: " + uploadError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: publicURLData } = supabase.storage
+        .from("blogs")
+        .getPublicUrl(filePath);
+
+      finalFotografiUrl = publicURLData.publicUrl;
+    }
 
     const blogData = {
       user_id: userId,
       blog_ismi: blogIsmi,
       blog_icerigi: blogIcerigi,
-      blog_fotografi: blogFotografi || null,
+      blog_fotografi: finalFotografiUrl || null,
       blog_guncelleme_tarihi: new Date().toISOString(),
     };
 
@@ -108,13 +136,15 @@ export default function BlogsPage() {
         fetchBlogs();
       }
     }
+    setSubmitting(false);
   };
 
   const handleEditBlog = (blog: BlogItem) => {
     setEditingBlogId(blog.id);
     setBlogIsmi(blog.blog_ismi);
     setBlogIcerigi(blog.blog_icerigi);
-    setBlogFotografi(blog.blog_fotografi || "");
+    setExistingBlogFotografi(blog.blog_fotografi || "");
+    setBlogFile(null);
     setIsModalOpen(true);
   };
 
@@ -135,7 +165,8 @@ export default function BlogsPage() {
     setEditingBlogId(null);
     setBlogIsmi("");
     setBlogIcerigi("");
-    setBlogFotografi("");
+    setBlogFile(null);
+    setExistingBlogFotografi("");
   };
 
   const canWriteBlog = userRole === "admin" || blogYetkisi;
@@ -177,6 +208,8 @@ export default function BlogsPage() {
             {blogs.map((blog) => {
               const isOwner = blog.user_id === userId;
               const isAdmin = userRole === "admin";
+              // Admin her şeyi düzenleyebilir/silebilir. Kullanıcı sadece kendi yazısını düzenleyebilir/silebilir.
+              const canModify = isAdmin || isOwner;
 
               return (
                 <div key={blog.id} className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row gap-6 items-start">
@@ -192,7 +225,7 @@ export default function BlogsPage() {
                     <div className="flex justify-between items-start gap-4">
                       <h2 className="text-2xl font-bold text-emerald-300">{blog.blog_ismi}</h2>
                       
-                      {(isOwner || isAdmin) && (
+                      {canModify && (
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <button
                             onClick={() => handleEditBlog(blog)}
@@ -260,13 +293,18 @@ export default function BlogsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Fotoğraf URL (İsteğe bağlı)</label>
+                  <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Blog Fotoğrafı Seç</label>
+                  {existingBlogFotografi && (
+                    <div className="mb-2 flex items-center gap-3 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                      <img src={existingBlogFotografi} alt="Mevcut Fotoğraf" className="w-12 h-12 object-cover rounded-md" />
+                      <span className="text-xs text-zinc-400">Mevcut fotoğraf yüklü</span>
+                    </div>
+                  )}
                   <input
-                    type="text"
-                    value={blogFotografi}
-                    onChange={(e) => setBlogFotografi(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setBlogFile(e.target.files?.[0] || null)}
+                    className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
                   />
                 </div>
 
@@ -286,7 +324,7 @@ export default function BlogsPage() {
                   <button type="button" onClick={closeModal} className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-xl transition cursor-pointer">
                     İptal
                   </button>
-                  <button type="submit" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer">
+                  <button type="submit" disabled={submitting} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer disabled:opacity-50">
                     <Save className="w-4 h-4" /> {editingBlogId ? "Güncelle" : "Yayınla"}
                   </button>
                 </div>
