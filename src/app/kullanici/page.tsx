@@ -11,6 +11,8 @@ import {
   Phone,
   CreditCard,
   FileText,
+  Trophy,
+  CheckCircle,
 } from "lucide-react";
 
 type Profile = {
@@ -33,9 +35,19 @@ type Book = {
   toplam_sayfa: number;
 };
 
+type BasvuruOzet = {
+  id: string;
+  durum: string;
+  oyku_yarismalari: {
+    yarisma_ismi: string;
+    durum: string;
+  } | null;
+};
+
 export default function KullaniciPaneli() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
+  const [basvurularim, setBasvurularim] = useState<BasvuruOzet[]>([]);
   const [userProgress, setUserProgress] = useState<{
     [key: string]: number;
   }>({});
@@ -105,6 +117,18 @@ export default function KullaniciPaneli() {
 
         if (mounted && booksData) {
           setBooks(booksData);
+        }
+
+        // -----------------------------------------------
+        // YARIŞMA BAŞVURULARI
+        // -----------------------------------------------
+        const { data: bData } = await supabase
+          .from("yarisma_basvurulari")
+          .select("id, durum, oyku_yarismalari (yarisma_ismi, durum)")
+          .eq("user_id", session.user.id);
+
+        if (bData && mounted) {
+          setBasvurularim(bData as any);
         }
 
         if (mounted) {
@@ -192,7 +216,7 @@ export default function KullaniciPaneli() {
 
         {/* =================================================
             ÜST BAŞLIK
-        ================================================= */}
+        ================================================ = */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 border-b border-zinc-800 pb-6">
 
           <div>
@@ -212,7 +236,16 @@ export default function KullaniciPaneli() {
           {/* =================================================
               BUTONLAR
           ================================================= */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+
+            {/* YARIŞMALAR LİNKİ */}
+            <Link
+              href="/yarismalar"
+              className="px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition rounded-xl border border-zinc-800 flex items-center gap-2"
+            >
+              <Trophy className="w-4 h-4 text-emerald-400" />
+              Yarışmalar
+            </Link>
 
             {/* BLOGS LİNKİ */}
             <Link
@@ -318,6 +351,42 @@ export default function KullaniciPaneli() {
 
             </div>
           </div>
+        </div>
+
+        {/* =================================================
+            KULLANICI YARIŞMA BAŞVURULARI ÖZETİ
+        ================================================= */}
+        <div className="mt-8 bg-zinc-900/60 border border-zinc-800 p-6 rounded-3xl shadow-xl space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-emerald-400" /> Yarışma Başvurularım & Durumları
+            </h3>
+            <Link href="/yarismalar" className="text-xs text-emerald-400 hover:underline">
+              Tüm Yarışmalara Git →
+            </Link>
+          </div>
+
+          {basvurularim.length === 0 ? (
+            <p className="text-xs text-zinc-500 italic">Henüz katıldığınız bir öykü yarışması bulunmuyor.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {basvurularim.map((b) => (
+                <div key={b.id} className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 flex justify-between items-center gap-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{b.oyku_yarismalari?.yarisma_ismi || "Yarışma"}</h4>
+                    <span className="text-[11px] text-zinc-400 mt-0.5 block">
+                      Yarışma Durumu: <strong className="text-zinc-200 capitalize">{b.oyku_yarismalari?.durum || "Aktif"}</strong>
+                    </span>
+                  </div>
+                  <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 ${
+                    b.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
+                    <CheckCircle className="w-3.5 h-3.5" /> {b.durum === 'onaylandi' ? 'Onaylandı' : 'Beklemede'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

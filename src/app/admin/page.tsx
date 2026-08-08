@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star, FileText, Trophy, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star, FileText, Trophy, CheckCircle, Clock, Award } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -46,6 +46,7 @@ type YarismaItem = {
   yarisma_tarihi: string;
   basvuru_baslangic_tarihi: string;
   basvuru_bitis_tarihi: string;
+  durum: string; // 'aktif', 'bitti', 'sonuclandi'
 };
 
 export default function AdminPage() {
@@ -88,6 +89,7 @@ export default function AdminPage() {
   const [yarismaTarihi, setYarismaTarihi] = useState("");
   const [basvuruBaslangicTarihi, setBasvuruBaslangicTarihi] = useState("");
   const [basvuruBitisTarihi, setBasvuruBitisTarihi] = useState("");
+  const [yarismaDurumu, setYarismaDurumu] = useState("aktif");
   const [editingYarismaId, setEditingYarismaId] = useState<string | null>(null);
 
   // Admin Yorum İnceleme States
@@ -156,6 +158,7 @@ export default function AdminPage() {
       yarisma_tarihi: yarismaTarihi,
       basvuru_baslangic_tarihi: basvuruBaslangicTarihi,
       basvuru_bitis_tarihi: basvuruBitisTarihi,
+      durum: yarismaDurumu,
     };
 
     if (editingYarismaId) {
@@ -177,6 +180,7 @@ export default function AdminPage() {
     setYarismaTarihi(y.yarisma_tarihi ? y.yarisma_tarihi.split("T")[0] : "");
     setBasvuruBaslangicTarihi(y.basvuru_baslangic_tarihi ? y.basvuru_baslangic_tarihi.split("T")[0] : "");
     setBasvuruBitisTarihi(y.basvuru_bitis_tarihi ? y.basvuru_bitis_tarihi.split("T")[0] : "");
+    setYarismaDurumu(y.durum || "aktif");
   };
 
   const handleDeleteYarisma = async (id: string) => {
@@ -194,6 +198,7 @@ export default function AdminPage() {
     setYarismaTarihi("");
     setBasvuruBaslangicTarihi("");
     setBasvuruBitisTarihi("");
+    setYarismaDurumu("aktif");
   };
 
   const handleBasvuruDurum = async (id: string, durum: string) => {
@@ -232,7 +237,6 @@ export default function AdminPage() {
     }
   };
 
-  // Kitap Ekleme / Güncelleme (Dosya Yükleme Destekli)
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -715,7 +719,7 @@ export default function AdminPage() {
 
       {/* 3. YARIŞMA YÖNETİMİ SEKMESİ */}
       {activeTab === "yarismalar" && (
-        <div className="space-y-8">
+        <div className="space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
               <h2 className="text-lg font-semibold mb-4 text-emerald-300 flex items-center gap-2">
@@ -735,6 +739,14 @@ export default function AdminPage() {
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yarışma Şartları *</label>
                   <textarea rows={3} value={yarismaSartlari} onChange={(e) => setYarismaSartlari(e.target.value)} placeholder="Katılım şartları..." className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" required />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yarışma Durumu *</label>
+                  <select value={yarismaDurumu} onChange={(e) => setYarismaDurumu(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    <option value="aktif">Aktif (Başvurulabilir)</option>
+                    <option value="bitti">Başvuru Bitti / Sonuç Bekleniyor</option>
+                    <option value="sonuclandi">Sonuçlandı</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Yarışma / Sonuç Tarihi *</label>
@@ -762,25 +774,83 @@ export default function AdminPage() {
               </form>
             </div>
 
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-lg font-semibold text-zinc-200">Aktif Yarışmalar ({yarismalar.length})</h2>
-              {yarismalar.length === 0 ? <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500">Henüz eklenmiş yarışma bulunmuyor.</div> : (
-                <div className="space-y-3">
-                  {yarismalar.map((y) => (
-                    <div key={y.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
-                      <div>
-                        <h3 className="text-sm font-bold text-white">{y.yarisma_ismi}</h3>
-                        <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{y.yarisma_hakkinda}</p>
-                        <span className="text-[10px] text-emerald-400 mt-1 block">Başvuru: {y.basvuru_baslangic_tarihi?.split("T")[0]} - {y.basvuru_bitis_tarihi?.split("T")[0]}</span>
+            <div className="lg:col-span-2 space-y-8">
+              {/* 1. AKTİF YARIŞMALAR */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
+                  <Trophy className="w-5 h-5" /> Aktif Yarışmalar ({yarismalar.filter(y => y.durum === 'aktif').length})
+                </h2>
+                {yarismalar.filter(y => y.durum === 'aktif').length === 0 ? (
+                  <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl text-center text-zinc-500 text-sm">Aktif yarışma bulunmuyor.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {yarismalar.filter(y => y.durum === 'aktif').map((y) => (
+                      <div key={y.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">{y.yarisma_ismi}</h3>
+                          <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{y.yarisma_hakkinda}</p>
+                          <span className="text-[10px] text-emerald-400 mt-1 block">Başvuru: {y.basvuru_baslangic_tarihi?.split("T")[0]} - {y.basvuru_bitis_tarihi?.split("T")[0]}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEditYarisma(y)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteYarisma(y.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleEditYarisma(y)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDeleteYarisma(y.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. BAŞVURU BİTEN / SONUÇ BEKLENENLER */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-amber-400 flex items-center gap-2">
+                  <Clock className="w-5 h-5" /> Başvuru Biten / Sonuç Bekleyenler ({yarismalar.filter(y => y.durum === 'bitti').length})
+                </h2>
+                {yarismalar.filter(y => y.durum === 'bitti').length === 0 ? (
+                  <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl text-center text-zinc-500 text-sm">Bu kategoride yarışma bulunmuyor.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {yarismalar.filter(y => y.durum === 'bitti').map((y) => (
+                      <div key={y.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">{y.yarisma_ismi}</h3>
+                          <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{y.yarisma_hakkinda}</p>
+                          <span className="text-[10px] text-amber-400 mt-1 block">Sonuç Tarihi: {y.yarisma_tarihi?.split("T")[0]}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEditYarisma(y)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteYarisma(y.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. SONUÇLANANLAR */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-blue-400 flex items-center gap-2">
+                  <Award className="w-5 h-5" /> Sonuçlananlar ({yarismalar.filter(y => y.durum === 'sonuclandi').length})
+                </h2>
+                {yarismalar.filter(y => y.durum === 'sonuclandi').length === 0 ? (
+                  <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl text-center text-zinc-500 text-sm">Sonuçlanan yarışma bulunmuyor.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {yarismalar.filter(y => y.durum === 'sonuclandi').map((y) => (
+                      <div key={y.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">{y.yarisma_ismi}</h3>
+                          <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{y.yarisma_hakkinda}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEditYarisma(y)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition text-zinc-300 cursor-pointer" title="Düzenle"><Edit3 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteYarisma(y.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer" title="Sil"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
