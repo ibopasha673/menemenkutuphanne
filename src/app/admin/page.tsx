@@ -160,12 +160,11 @@ export default function AdminPage() {
     if (data) setDuyurular(data);
   };
 
-  // İLİŞKİ HATALARINI (400) KÖKTEN ÇÖZEN GÜVENLİ BAŞVURU ÇEKME FONKSİYONU
+  // HATA KÖKTEN ÇÖZüldü: Olmayan created_time yerine direkt select(*) ile çekiliyor
   const fetchBasvurular = async () => {
     const { data: bData, error } = await supabase
       .from("yarisma_basvurulari")
-      .select("*")
-      .order("created_time", { ascending: false });
+      .select("*");
 
     if (error) {
       console.error("Başvurular çekilemedi:", error.message);
