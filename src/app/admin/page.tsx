@@ -160,13 +160,64 @@ export default function AdminPage() {
     if (data) setDuyurular(data);
   };
 
+  // İLİŞKİ HATALARINI (400) KÖKTEN ÇÖZEN GÜVENLİ BAŞVURU ÇEKME FONKSİYONU
   const fetchBasvurular = async () => {
-    // DÜZELTME: created_at yerine created_time kullanıldı
-    const { data } = await supabase
+    const { data: bData, error } = await supabase
       .from("yarisma_basvurulari")
-      .select("*, profiles:user_id (isim, soyisim, email, tc_kimlik_no), oyku_yarismalari:yarisma_id (yarisma_ismi)")
+      .select("*")
       .order("created_time", { ascending: false });
-    if (data) setBasvurular(data);
+
+    if (error) {
+      console.error("Başvurular çekilemedi:", error.message);
+      return;
+    }
+
+    if (!bData) {
+      setBasvurular([]);
+      return;
+    }
+
+    const enrichedBasvurular = await Promise.all(
+      bData.map(async (b) => {
+        let profileInfo = { isim: b.isim || "", soyisim: b.soyisim || "", email: "", tc_kimlik_no: b.tc_kimlik_no || "" };
+        let yarismaIsmi = "Yarışma";
+
+        if (b.user_id) {
+          const { data: pData } = await supabase
+            .from("profiles")
+            .select("isim, soyisim, email, tc_kimlik_no")
+            .eq("id", b.user_id)
+            .maybeSingle();
+          if (pData) {
+            profileInfo = {
+              isim: b.isim || pData.isim || "",
+              soyisim: b.soyisim || pData.soyisim || "",
+              email: pData.email || "",
+              tc_kimlik_no: b.tc_kimlik_no || pData.tc_kimlik_no || "",
+            };
+          }
+        }
+
+        if (b.yarisma_id) {
+          const { data: yData } = await supabase
+            .from("oyku_yarismalari")
+            .select("yarisma_ismi")
+            .eq("id", b.yarisma_id)
+            .maybeSingle();
+          if (yData) {
+            yarismaIsmi = yData.yarisma_ismi;
+          }
+        }
+
+        return {
+          ...b,
+          profiles: profileInfo,
+          oyku_yarismalari: { yarisma_ismi: yarismaIsmi }
+        };
+      })
+    );
+
+    setBasvurular(enrichedBasvurular);
   };
 
   const handleSaveDuyuru = async (e: React.FormEvent) => {
@@ -972,15 +1023,14 @@ export default function AdminPage() {
                   <div key={b.id} className="bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        {/* Tablodan gelen isim/soyisim veya profiles tablosundan join ile gelen isim soyisim */}
                         <span className="text-sm font-bold text-white">
-                          {b.isim || b.profiles?.isim || "İsimsiz"} {b.soyisim || b.profiles?.soyisim || ""}
+                          {b.profiles?.isim || "İsimsiz"} {b.profiles?.soyisim || ""}
                         </span>
-                        <span className="text-xs text-zinc-500">({b.profiles?.email})</span>
+                        <span className="text-xs text-zinc-500">({b.profiles?.email || "E-posta yok"})</span>
                         <span className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md font-semibold">{b.oyku_yarismalari?.yarisma_ismi}</span>
                       </div>
                       <div className="text-xs text-zinc-400">
-                        TC Kimlik No: <span className="text-zinc-200 font-medium">{b.tc_kimlik_no || b.profiles?.tc_kimlik_no || "Belirtilmemiş"}</span>
+                        TC Kimlik No: <span className="text-zinc-200 font-medium">{b.profiles?.tc_kimlik_no || "Belirtilmemiş"}</span>
                       </div>
                       <p className="text-xs text-zinc-300 bg-zinc-950 p-3 rounded-xl border border-zinc-800 whitespace-pre-line mt-2">{b.oyku_metni}</p>
                     </div>
