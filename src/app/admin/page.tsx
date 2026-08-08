@@ -65,6 +65,7 @@ export default function AdminPage() {
   const [bookFile, setBookFile] = useState<File | null>(null);
   const [bookDurum, setBookDurum] = useState<boolean>(false);
   const [bookSonTarih, setBookSonTarih] = useState("");
+  const [existingKapakGorseli, setExistingKapakGorseli] = useState("");
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
   // Admin Yorum İnceleme States
@@ -161,7 +162,7 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
 
-    let finalGorselUrl = "";
+    let finalGorselUrl = existingKapakGorseli;
 
     if (bookFile) {
       const fileExt = bookFile.name.split(".").pop();
@@ -195,13 +196,10 @@ export default function AdminPage() {
       yil: bookYil,
       durum: bookDurum,
       son_tarih: bookSonTarih,
+      kapak_gorseli: finalGorselUrl,
     };
 
     if (editingBookId) {
-      if (finalGorselUrl) {
-        bookData.kapak_gorseli = finalGorselUrl;
-      }
-
       const { error } = await supabase
         .from("books")
         .update(bookData)
@@ -220,8 +218,6 @@ export default function AdminPage() {
         setLoading(false);
         return;
       }
-
-      bookData.kapak_gorseli = finalGorselUrl;
 
       const { error } = await supabase.from("books").insert([bookData]);
 
@@ -247,6 +243,7 @@ export default function AdminPage() {
     setBookYil(book.yil || "");
     setBookDurum(book.durum ?? false);
     setBookSonTarih(book.son_tarih || "");
+    setExistingKapakGorseli(book.kapak_gorseli || "");
     setBookFile(null);
   };
 
@@ -261,6 +258,7 @@ export default function AdminPage() {
     setBookYil("");
     setBookDurum(false);
     setBookSonTarih("");
+    setExistingKapakGorseli("");
     setBookFile(null);
   };
 
@@ -525,9 +523,15 @@ export default function AdminPage() {
                 <label className="text-sm text-zinc-300">Bu kitabı "Güncel Okunan" olarak işaretle</label>
               </div>
 
+              {/* TAKVİMDEN TARİH SEÇME */}
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Son Tarih</label>
-                <input type="text" value={bookSonTarih} onChange={(e) => setBookSonTarih(e.target.value)} placeholder="Örn: 20 Ağustos 2026" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Son Tarih (Takvimden Seç)</label>
+                <input 
+                  type="date" 
+                  value={bookSonTarih} 
+                  onChange={(e) => setBookSonTarih(e.target.value)} 
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer" 
+                />
               </div>
 
               <div>
@@ -542,10 +546,18 @@ export default function AdminPage() {
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Toplantı Bilgileri</label>
                 <input type="text" value={bookToplantiBilgileri} onChange={(e) => setBookToplantiBilgileri(e.target.value)} placeholder="14 Ocak 2026 - Çevrim içi" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
+              
+              {/* MEVCUT GÖRSEL ÖNİZLEMESİ VE DOSYA SEÇİMİ */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">
                   Kitap Görseli Seç (Mevcudu değiştirmek istersen seç)
                 </label>
+                {existingKapakGorseli && (
+                  <div className="mb-2 flex items-center gap-3 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                    <img src={existingKapakGorseli} alt="Mevcut Kapak" className="w-10 h-14 object-cover rounded-md" />
+                    <span className="text-xs text-zinc-400">Mevcut görsel yüklü</span>
+                  </div>
+                )}
                 <input type="file" accept="image/*" onChange={(e) => setBookFile(e.target.files?.[0] || null)} className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
               </div>
 
@@ -583,6 +595,7 @@ export default function AdminPage() {
                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${book.durum ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"}`}>
                              {book.durum ? "Güncel" : "Geçmiş"}
                            </span>
+                           {book.son_tarih && <span className="text-[10px] text-zinc-400">Son Tarih: {book.son_tarih}</span>}
                         </div>
                       </div>
                     </div>
