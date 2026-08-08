@@ -137,7 +137,7 @@ export default function AdminPage() {
   };
 
   const fetchYarismalar = async () => {
-    const { data } = await supabase.from("oyku_yarismalari").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("oyku_yarismalari").select("*").order("created_time", { ascending: false });
     if (data) setYarismalar(data);
   };
 
@@ -145,7 +145,7 @@ export default function AdminPage() {
     const { data } = await supabase
       .from("yarisma_basvurulari")
       .select("*, profiles:user_id (isim, soyisim, email), oyku_yarismalari:yarisma_id (yarisma_ismi)")
-      .order("created_at", { ascending: false });
+      .order("created_time", { ascending: false });
     if (data) setBasvurular(data);
   };
 
