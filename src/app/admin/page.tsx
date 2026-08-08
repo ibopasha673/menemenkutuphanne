@@ -34,6 +34,8 @@ type BookItem = {
   toplanti_bilgileri?: string;
   ay?: string;
   yil?: string;
+  durum: boolean;
+  son_tarih?: string;
 };
 
 export default function AdminPage() {
@@ -61,6 +63,8 @@ export default function AdminPage() {
   const [bookAy, setBookAy] = useState("");
   const [bookYil, setBookYil] = useState("");
   const [bookFile, setBookFile] = useState<File | null>(null);
+  const [bookDurum, setBookDurum] = useState<boolean>(false);
+  const [bookSonTarih, setBookSonTarih] = useState("");
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
   // Admin Yorum İnceleme States
@@ -152,7 +156,7 @@ export default function AdminPage() {
     }
   };
 
-  // Kitap Ekleme / Güncelleme (Dosya Yükleme Destekli)
+  // Kitap Ekleme / Güncelleme
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -181,23 +185,25 @@ export default function AdminPage() {
       finalGorselUrl = publicURLData.publicUrl;
     }
 
-    if (editingBookId) {
-      const updateData: any = {
-        baslik: bookBaslik,
-        yazar: bookYazar,
-        toplam_sayfa: bookToplamSayfa,
-        kisa_aciklama: bookKisaAciklama,
-        toplanti_bilgileri: bookToplantiBilgileri,
-        ay: bookAy,
-        yil: bookYil,
-      };
-      if (finalGorselUrl) {
-        updateData.kapak_gorseli = finalGorselUrl;
-      }
+    const bookData: any = {
+      baslik: bookBaslik,
+      yazar: bookYazar,
+      toplam_sayfa: bookToplamSayfa,
+      kisa_aciklama: bookKisaAciklama,
+      toplanti_bilgileri: bookToplantiBilgileri,
+      ay: bookAy,
+      yil: bookYil,
+      durum: bookDurum,
+      son_tarih: bookSonTarih,
+    };
+    if (finalGorselUrl) {
+      bookData.kapak_gorseli = finalGorselUrl;
+    }
 
+    if (editingBookId) {
       const { error } = await supabase
         .from("books")
-        .update(updateData)
+        .update(bookData)
         .eq("id", editingBookId);
 
       if (error) {
@@ -214,18 +220,7 @@ export default function AdminPage() {
         return;
       }
 
-      const { error } = await supabase.from("books").insert([
-        {
-          baslik: bookBaslik,
-          yazar: bookYazar,
-          toplam_sayfa: bookToplamSayfa,
-          kapak_gorseli: finalGorselUrl,
-          kisa_aciklama: bookKisaAciklama,
-          toplanti_bilgileri: bookToplantiBilgileri,
-          ay: bookAy,
-          yil: bookYil,
-        },
-      ]);
+      const { error } = await supabase.from("books").insert([bookData]);
 
       if (error) {
         alert("Kitap eklenirken hata oluştu: " + error.message);
@@ -247,6 +242,8 @@ export default function AdminPage() {
     setBookToplantiBilgileri(book.toplanti_bilgileri || "");
     setBookAy(book.ay || "");
     setBookYil(book.yil || "");
+    setBookDurum(book.durum || false);
+    setBookSonTarih(book.son_tarih || "");
     setBookFile(null);
   };
 
@@ -259,6 +256,8 @@ export default function AdminPage() {
     setBookToplantiBilgileri("");
     setBookAy("");
     setBookYil("");
+    setBookDurum(false);
+    setBookSonTarih("");
     setBookFile(null);
   };
 
@@ -511,6 +510,24 @@ export default function AdminPage() {
                   <input type="text" value={bookYil} onChange={(e) => setBookYil(e.target.value)} placeholder="2026" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
+              
+              {/* EKLENEN KISIMLAR */}
+              <div className="flex items-center gap-3 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
+                <input 
+                  type="checkbox" 
+                  checked={bookDurum} 
+                  onChange={(e) => setBookDurum(e.target.checked)}
+                  className="w-5 h-5 accent-emerald-600 cursor-pointer"
+                />
+                <label className="text-sm text-zinc-300">Bu kitabı "Güncel Okunan" olarak işaretle</label>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Son Tarih</label>
+                <input type="text" value={bookSonTarih} onChange={(e) => setBookSonTarih(e.target.value)} placeholder="Örn: 20 Ağustos 2026" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              {/* --- */}
+
               <div>
                 <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Ay</label>
                 <input type="text" value={bookAy} onChange={(e) => setBookAy(e.target.value)} placeholder="Ocak" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
@@ -561,11 +578,9 @@ export default function AdminPage() {
                         <p className="text-xs text-zinc-400">Yazar: {book.yazar}</p>
                         <div className="flex gap-2 mt-1">
                            <span className="text-[11px] font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-md inline-block">S: {book.toplam_sayfa}</span>
-                           {(book.ay || book.yil) && (
-                              <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md inline-block">
-                                {book.ay} {book.yil}
-                              </span>
-                           )}
+                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${book.durum ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"}`}>
+                             {book.durum ? "Güncel" : "Geçmiş"}
+                           </span>
                         </div>
                       </div>
                     </div>
@@ -573,7 +588,6 @@ export default function AdminPage() {
                       <button 
                         onClick={() => handleOpenReviewsModal(book)} 
                         className="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 rounded-xl transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                        title="Kitap Yorumları"
                       >
                         <MessageSquare className="w-3.5 h-3.5" /> Yorumlar
                       </button>
