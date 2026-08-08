@@ -53,7 +53,7 @@ export default function YarismalarPage() {
 
   const fetchData = async (uid: string) => {
     setLoading(true);
-    const { data: yData } = await supabase.from("oyku_yarismalari").select("*").order("created_at", { ascending: false });
+    const { data: yData } = await supabase.from("oyku_yarismalari").select("*").order("created_time", { ascending: false });
     if (yData) setYarismalar(yData);
 
     const { data: bData } = await supabase.from("yarisma_basvurulari").select("*").eq("user_id", uid);
@@ -271,7 +271,7 @@ export default function YarismalarPage() {
               <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
                 <h3 className="text-lg font-bold text-emerald-300">
                   {selectedYarisma.yarisma_ismi} - Başvuru Formu
-                </h3>
+               </h3>
                 <button onClick={closeModal} className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
