@@ -30,6 +30,7 @@ export default function YarismalarPage() {
   const [basvurular, setBasvurular] = useState<{ [key: string]: Basvuru }>({});
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userProfileData, setUserProfileData] = useState<any>(null);
   
   // Başvuru Modal State'leri
   const [selectedYarisma, setSelectedYarisma] = useState<Yarisma | null>(null);
@@ -46,6 +47,16 @@ export default function YarismalarPage() {
         return;
       }
       setUserId(session.user.id);
+
+      // Kullanıcının profil bilgilerini çekelim (isim, soyisim, tc hatasını engellemek için)
+      const { data: pData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      
+      if (pData) setUserProfileData(pData);
+
       fetchData(session.user.id);
     }
     init();
@@ -53,7 +64,6 @@ export default function YarismalarPage() {
 
   const fetchData = async (uid: string) => {
     setLoading(true);
-    // DÜZELTME BURADA: created_at yerine tablodaki gerçek kolon adı olan created_time yazıldı
     const { data: yData } = await supabase.from("oyku_yarismalari").select("*").order("created_time", { ascending: false });
     if (yData) setYarismalar(yData);
 
@@ -89,22 +99,39 @@ export default function YarismalarPage() {
       return;
     }
 
+    // Tabloda hala zorunlu kolonlar varsa hata vermemesi için profilden verileri ekliyoruz
+    const payload = {
+      yarisma_id: selectedYarisma.id,
+      user_id: userId,
+      oyku_metni: oykuMetni,
+      durum: 'beklemede', // Her yeni kayıt veya düzenlemede tekrar beklemede (admin onayına) düşer
+      isim: userProfileData?.isim || "",
+      soyisim: userProfileData?.soyisim || "",
+      tc_kimlik_no: userProfileData?.tc_kimlik_no || "",
+    };
+
     if (editingBasvuruId) {
       const { error } = await supabase
         .from("yarisma_basvurulari")
-        .update({ oyku_metni: oykuMetni })
+        .update({ 
+          oyku_metni: oykuMetni, 
+          durum: 'beklemede',
+          isim: userProfileData?.isim || "",
+          soyisim: userProfileData?.soyisim || "",
+          tc_kimlik_no: userProfileData?.tc_kimlik_no || "",
+        })
         .eq("id", editingBasvuruId);
 
       if (error) alert("Güncellenirken hata: " + error.message);
       else {
-        alert("Başvurunuz güncellendi!");
+        alert("Başvurunuz güncellendi ve tekrar admin onayına gönderildi!");
         closeModal();
         fetchData(userId);
       }
     } else {
       const { error } = await supabase
         .from("yarisma_basvurulari")
-        .insert([{ yarisma_id: selectedYarisma.id, user_id: userId, oyku_metni: oykuMetni, durum: 'beklemede' }]);
+        .insert([payload]);
 
       if (error) alert("Başvuru yapılırken hata: " + error.message);
       else {
