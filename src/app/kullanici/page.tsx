@@ -141,31 +141,6 @@ export default function KullaniciPaneli() {
   }, [router]);
 
   // =====================================================
-  // OKUMA İLERLEMESİ
-  // =====================================================
-  const handleProgressChange = (
-    bookId: string,
-    value: number,
-    maxPage: number
-  ) => {
-    if (value < 0) {
-      return;
-    }
-
-    if (value > maxPage) {
-      alert(
-        `Okuduğunuz sayfa toplam sayfa sayısından (${maxPage}) fazla olamaz!`
-      );
-      return;
-    }
-
-    setUserProgress((prev) => ({
-      ...prev,
-      [bookId]: value,
-    }));
-  };
-
-  // =====================================================
   // ÇIKIŞ
   // =====================================================
   const handleLogout = async () => {
@@ -333,94 +308,6 @@ export default function KullaniciPaneli() {
 
             </div>
           </div>
-        </div>
-
-        {/* =================================================
-            KİTAPLAR
-        ================================================= */}
-        <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-3xl shadow-xl space-y-4 mt-6">
-
-          <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            Kulüp Kitaplığı & Okuma Takibi
-          </h3>
-
-          {books.length === 0 ? (
-
-            <p className="text-xs text-zinc-500">
-              Henüz eklenmiş kulüp kitabı bulunmuyor.
-            </p>
-
-          ) : (
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              {books.map((book) => {
-
-                const currentVal =
-                  userProgress[book.id] ?? 0;
-
-                return (
-                  <div
-                    key={book.id}
-                    className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex gap-4 items-center"
-                  >
-
-                    <img
-                      src={book.kapak_gorseli}
-                      alt={book.baslik}
-                      className="w-16 h-20 rounded-xl object-cover border border-zinc-800 flex-shrink-0"
-                    />
-
-                    <div className="flex-1 space-y-2">
-
-                      <div>
-                        <h4 className="text-sm font-bold text-white">
-                          {book.baslik}
-                        </h4>
-
-                        <p className="text-xs text-zinc-400">
-                          {book.yazar}
-                        </p>
-
-                        <span className="text-[11px] text-emerald-400">
-                          Toplam Sayfa: {book.toplam_sayfa}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-
-                        <span className="text-xs text-zinc-400">
-                          Okunan:
-                        </span>
-
-                        <input
-                          type="number"
-                          min={0}
-                          max={book.toplam_sayfa}
-                          value={currentVal}
-                          onChange={(e) =>
-                            handleProgressChange(
-                              book.id,
-                              Number(e.target.value),
-                              book.toplam_sayfa
-                            )
-                          }
-                          className="w-20 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
-                        />
-
-                        <span className="text-xs text-zinc-500">
-                          / {book.toplam_sayfa}
-                        </span>
-
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-            </div>
-          )}
         </div>
 
       </div>
