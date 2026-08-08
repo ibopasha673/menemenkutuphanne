@@ -242,69 +242,69 @@ export default function Home() {
       {/* =====================================================
           HEADER
       ====================================================== */}
-      <header className="absolute top-0 left-0 w-full z-30 flex justify-between items-center px-8 py-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+      <header className="absolute top-0 left-0 w-full z-30 flex flex-col md:flex-row justify-between items-center px-4 md:px-8 py-4 md:py-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent gap-4">
         {/* LOGO */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center">
+        <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto justify-between md:justify-start">
+          <Link href="/" className="flex items-center gap-3 md:gap-4">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-emerald-600 shadow-2xl shadow-emerald-900/60 flex items-center justify-center flex-shrink-0">
               <img
                 src="/logomenemenkutuphaen.png"
                 alt="Logo"
                 className="w-full h-full rounded-full object-cover animate-logo-spin"
               />
             </div>
+
+            <div>
+              <h1 className="font-extrabold text-lg md:text-xl tracking-wider text-white drop-shadow-md">
+                Ekşi Kitap Kulübü
+              </h1>
+
+              <span className="text-[10px] md:text-xs uppercase tracking-widest text-emerald-400 font-semibold">
+                İzmir
+              </span>
+            </div>
           </Link>
-
-          <div>
-            <h1 className="font-extrabold text-xl tracking-wider text-white drop-shadow-md">
-              Ekşi Kitap Kulübü
-            </h1>
-
-            <span className="text-xs uppercase tracking-widest text-emerald-400 font-semibold">
-              İzmir
-            </span>
-          </div>
         </div>
 
         {/* =================================================
             SAĞ ÜST KULLANICI ALANI
         ================================================== */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center flex-wrap justify-center md:justify-end gap-2 md:gap-4 w-full md:w-auto">
           <Link
             href="/blogs"
-            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-3 md:px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-1.5 md:gap-2 shadow-md"
           >
-            <FileText className="w-4 h-4 text-emerald-400" />
+            <FileText className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400" />
             <span>Blogs</span>
           </Link>
 
           <Link
             href="/kitaplar"
-            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-3 md:px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-1.5 md:gap-2 shadow-md"
           >
-            <BookOpen className="w-4 h-4 text-emerald-400" />
+            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400" />
 
             <span>Kitaplar</span>
           </Link>
 
           {authLoading ? (
-            <div className="w-32 h-10 rounded-xl bg-zinc-900/50 animate-pulse" />
+            <div className="w-28 md:w-32 h-10 rounded-xl bg-zinc-900/50 animate-pulse" />
           ) : userProfile ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-center">
               <Link
                 href="/kullanici"
-                className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+                className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-3 md:px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-1.5 md:gap-2 shadow-md max-w-[160px] md:max-w-none truncate"
               >
-                <UserIcon className="w-4 h-4 text-emerald-400" />
+                <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400 flex-shrink-0" />
 
-                <span>Merhaba, {getUserName()}</span>
+                <span className="truncate">Merhaba, {getUserName()}</span>
               </Link>
 
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-2 cursor-pointer shadow-lg"
+                className="px-3 md:px-4 py-2 text-xs md:text-sm font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all rounded-xl border border-red-500/20 flex items-center gap-1.5 md:gap-2 cursor-pointer shadow-lg"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
 
                 Çıkış Yap
               </button>
@@ -312,7 +312,7 @@ export default function Home() {
           ) : (
             <Link
               href="/giris"
-              className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
+              className="px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20 whitespace-nowrap"
             >
               Giriş Yap / Üye Ol
             </Link>
@@ -325,7 +325,7 @@ export default function Home() {
       ====================================================== */}
       <main className="relative w-full h-screen flex items-center justify-center">
         {sliders.length > 0 && (
-          <div className="absolute inset-0 w-full h-full">
+          <div className="absolute inset-0 w-full h-full overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40 z-10" />
 
             <img
@@ -336,8 +336,8 @@ export default function Home() {
 
             {/* SLOGAN */}
             {sliders[currentIndex].slogan && (
-              <div className="absolute bottom-24 left-10 z-20 max-w-lg bg-black/60 backdrop-blur-md p-6 rounded-2xl border-l-4 border-emerald-400 shadow-2xl">
-                <p className="text-lg md:text-xl font-light italic text-emerald-100 tracking-wide drop-shadow">
+              <div className="absolute bottom-20 md:bottom-24 left-4 md:left-10 right-4 md:right-auto z-20 max-w-lg bg-black/60 backdrop-blur-md p-4 md:p-6 rounded-2xl border-l-4 border-emerald-400 shadow-2xl">
+                <p className="text-base md:text-xl font-light italic text-emerald-100 tracking-wide drop-shadow">
                   "{sliders[currentIndex].slogan}"
                 </p>
               </div>
@@ -346,7 +346,7 @@ export default function Home() {
         )}
 
         {/* SLIDER NOKTALARI */}
-        <div className="absolute bottom-24 right-10 z-30 flex gap-2.5 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+        <div className="absolute bottom-8 md:bottom-24 right-4 md:right-10 z-30 flex gap-2.5 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
           {sliders.map((_, index) => (
             <button
               key={index}
@@ -364,12 +364,12 @@ export default function Home() {
       {/* =====================================================
           FOOTER
       ====================================================== */}
-      <footer className="w-full py-6 bg-black/90 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center text-xs text-zinc-400 gap-1.5 z-30 mt-auto">
+      <footer className="w-full py-6 px-4 bg-black/90 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center text-xs text-zinc-400 gap-1.5 z-30 mt-auto text-center">
         <p className="font-medium text-zinc-300">
           Ekşi Kitap Kulübü İzmir & 2026 Tüm Hakları Saklıdır.
         </p>
 
-        <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 text-[11px] text-zinc-500">
           <a
             href="#"
             className="hover:text-emerald-400 transition-colors"
@@ -377,7 +377,7 @@ export default function Home() {
             KVKK Aydınlatma Metni
           </a>
 
-          <span>•</span>
+          <span className="hidden md:inline">•</span>
 
           <a
             href="#"
@@ -386,7 +386,7 @@ export default function Home() {
             Gizlilik Politikası
           </a>
 
-          <span>•</span>
+          <span className="hidden md:inline">•</span>
 
           <a
             href="#"
@@ -395,7 +395,7 @@ export default function Home() {
             Çerez Politikası
           </a>
 
-          <span>•</span>
+          <span className="hidden md:inline">•</span>
 
           <Link
             href="/admin-giris"
