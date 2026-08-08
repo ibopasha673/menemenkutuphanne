@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3 } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Star, MessageSquare, Calendar, Info, Trash2, Edit3, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
 
 export default function KitaplarPage() {
@@ -51,14 +51,41 @@ export default function KitaplarPage() {
   }, [router]);
 
   async function veriCek() {
-    const { data: bData } = await supabase.from("books").select("*");
-    if (bData) setGecmisKitaplar(bData);
+    // durum = false olanlar Geçmişte Okunanlar
+    const { data: gecmisData } = await supabase
+      .from("books")
+      .select("*")
+      .eq("durum", false);
+    if (gecmisData) setGecmisKitaplar(gecmisData);
 
-    const { data: gData } = await supabase
-      .from("okunmakta_olan_kitaplar")
-      .select(`*, books:book_id (*)`);
-    if (gData) setGuncelKitaplar(gData);
+    // durum = true olanlar Okunmakta Olanlar
+    const { data: guncelData } = await supabase
+      .from("books")
+      .select("*")
+      .eq("durum", true);
+    if (guncelData) setGuncelKitaplar(guncelData);
   }
+
+  // Kitabı okunmakta olanlara taşıma (durum = true yapma ve süre ekleme)
+  const handleKitapSec = async (bookId: string) => {
+    // Son gün / son tarihten 1 gün sonrasının 00.00'ına kadar kalan süre hesaplaması veya tarih güncellemesi
+    const yarin = new Date();
+    yarin.setDate(yarin.getDate() + 1);
+    yarin.setHours(0, 0, 0, 0);
+    const tarihStr = yarin.toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from("books")
+      .update({ durum: true, son_tarih: tarihStr })
+      .eq("id", bookId);
+
+    if (error) {
+      alert("Kitap seçilirken hata oluştu: " + error.message);
+    } else {
+      alert("Kitap başarıyla okunmakte olanlara eklendi!");
+      veriCek();
+    }
+  };
 
   async function tumYorumlariCek() {
     const { data, error } = await supabase
@@ -203,10 +230,7 @@ export default function KitaplarPage() {
 
         {/* LİSTELEME */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {(aktifSekme === "guncel" 
-            ? guncelKitaplar.map(item => ({ ...item.books, rowId: item.id })) 
-            : gecmisKitaplar
-          ).map((book: any) => {
+          {(aktifSekme === "guncel" ? guncelKitaplar : gecmisKitaplar).map((book: any) => {
             if (!book) return null;
             const realBookId = book.id;
             const ortalama = getOrtalamaPuan(realBookId);
@@ -244,6 +268,16 @@ export default function KitaplarPage() {
                           <span>{ortalama}</span>
                         </div>
                       </div>
+                      
+                      {/* Kitap Seç / Okunmakta Olanlara Ekle Butonu (Geçmiş sekmesindeyse veya durum false ise gösterilebilir) */}
+                      {!book.durum && (
+                        <button
+                          onClick={() => handleKitapSec(book.id)}
+                          className="mt-3 px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <BookmarkPlus className="w-3.5 h-3.5" /> Bunu Okuyorum Olarak Seç
+                        </button>
+                      )}
                     </div>
                   </div>
 
