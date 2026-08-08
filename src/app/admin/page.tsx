@@ -70,7 +70,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
 
-  // Slider Form States (Dosya yükleme için güncellendi)
+  // Slider Form States
   const [sliderFile, setSliderFile] = useState<File | null>(null);
   const [existingSliderGorsel, setExistingSliderGorsel] = useState("");
   const [slogan, setSlogan] = useState("");
@@ -161,14 +161,14 @@ export default function AdminPage() {
   };
 
   const fetchBasvurular = async () => {
+    // DÜZELTME: created_at yerine created_time kullanıldı
     const { data } = await supabase
       .from("yarisma_basvurulari")
-      .select("*, profiles:user_id (isim, soyisim, email), oyku_yarismalari:yarisma_id (yarisma_ismi)")
+      .select("*, profiles:user_id (isim, soyisim, email, tc_kimlik_no), oyku_yarismalari:yarisma_id (yarisma_ismi)")
       .order("created_time", { ascending: false });
     if (data) setBasvurular(data);
   };
 
-  // Duyuru Kaydet / Güncelle
   const handleSaveDuyuru = async (e: React.FormEvent) => {
     e.preventDefault();
     const duyuruData = {
@@ -441,7 +441,6 @@ export default function AdminPage() {
     }
   };
 
-  // SLIDER YÖNETİMİ (Sliders bucket'ına dosya yükleme eklendi)
   const handleSaveSlider = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -542,7 +541,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6 md:p-12">
-      {/* ÜST BAŞLIK VE ÇIKIŞ */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-zinc-800 pb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-wide text-emerald-400">
@@ -567,7 +565,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* SEKME GEÇİŞLERİ */}
       <div className="flex flex-wrap gap-3 mb-8 border-b border-zinc-800 pb-4">
         <button
           type="button"
@@ -626,7 +623,6 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* 1. SLİDER YÖNETİMİ (DOSYA SEÇME ÖZELLİKLİ) */}
       {activeTab === "sliders" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
@@ -701,7 +697,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 2. KİTAP YÖNETİMİ SEKMESİ */}
       {activeTab === "books" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
@@ -834,7 +829,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 3. YARIŞMA YÖNETİMİ SEKMESİ */}
       {activeTab === "yarismalar" && (
         <div className="space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -978,9 +972,15 @@ export default function AdminPage() {
                   <div key={b.id} className="bg-zinc-900/60 border border-zinc-800 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{b.profiles?.isim || "Üye"} {b.profiles?.soyisim || ""}</span>
+                        {/* Tablodan gelen isim/soyisim veya profiles tablosundan join ile gelen isim soyisim */}
+                        <span className="text-sm font-bold text-white">
+                          {b.isim || b.profiles?.isim || "İsimsiz"} {b.soyisim || b.profiles?.soyisim || ""}
+                        </span>
                         <span className="text-xs text-zinc-500">({b.profiles?.email})</span>
                         <span className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md font-semibold">{b.oyku_yarismalari?.yarisma_ismi}</span>
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        TC Kimlik No: <span className="text-zinc-200 font-medium">{b.tc_kimlik_no || b.profiles?.tc_kimlik_no || "Belirtilmemiş"}</span>
                       </div>
                       <p className="text-xs text-zinc-300 bg-zinc-950 p-3 rounded-xl border border-zinc-800 whitespace-pre-line mt-2">{b.oyku_metni}</p>
                     </div>
@@ -1005,7 +1005,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 4. DUYURULAR YÖNETİMİ SEKMESİ */}
       {activeTab === "duyurular" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-2xl shadow-xl h-fit">
@@ -1066,7 +1065,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 5. ÜYE YÖNETİMİ */}
       {activeTab === "users" && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-200">Kayıtlı Kulüp Üyeleri</h2>
@@ -1142,7 +1140,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* KİTABA AİT YORUMLARI İNCELEME MODALI */}
       {selectedBookForReviews && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">

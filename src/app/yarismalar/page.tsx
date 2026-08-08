@@ -14,14 +14,14 @@ type Yarisma = {
   yarisma_tarihi: string;
   basvuru_baslangic_tarihi: string;
   basvuru_bitis_tarihi: string;
-  durum: string; // 'aktif', 'bitti', 'sonuclandi'
+  durum: string;
 };
 
 type Basvuru = {
   id: string;
   yarisma_id: string;
   oyku_metni: string;
-  durum: string; // 'beklemede', 'onaylandi'
+  durum: string;
 };
 
 export default function YarismalarPage() {
@@ -32,7 +32,6 @@ export default function YarismalarPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfileData, setUserProfileData] = useState<any>(null);
   
-  // Başvuru Modal State'leri
   const [selectedYarisma, setSelectedYarisma] = useState<Yarisma | null>(null);
   const [oykuMetni, setOykuMetni] = useState("");
   const [editingBasvuruId, setEditingBasvuruId] = useState<string | null>(null);
@@ -48,7 +47,7 @@ export default function YarismalarPage() {
       }
       setUserId(session.user.id);
 
-      // Kullanıcının profil bilgilerini çekelim (isim, soyisim, tc hatasını engellemek için)
+      // Profilden isim, soyisim ve tc bilgilerini çekiyoruz
       const { data: pData } = await supabase
         .from("profiles")
         .select("*")
@@ -99,12 +98,12 @@ export default function YarismalarPage() {
       return;
     }
 
-    // Tabloda hala zorunlu kolonlar varsa hata vermemesi için profilden verileri ekliyoruz
+    // Profiles tablosundan gelen isim, soyisim ve tc bilgilerini başvuruya ekliyoruz
     const payload = {
       yarisma_id: selectedYarisma.id,
       user_id: userId,
       oyku_metni: oykuMetni,
-      durum: 'beklemede', // Her yeni kayıt veya düzenlemede tekrar beklemede (admin onayına) düşer
+      durum: 'beklemede',
       isim: userProfileData?.isim || "",
       soyisim: userProfileData?.soyisim || "",
       tc_kimlik_no: userProfileData?.tc_kimlik_no || "",
@@ -164,7 +163,6 @@ export default function YarismalarPage() {
     setEditingBasvuruId(null);
   };
 
-  // Sekmelere göre filtreleme
   const filtrelenmisYarismalar = yarismalar.filter(y => {
     if (aktifSekme === "aktif") return y.durum === 'aktif';
     if (aktifSekme === "bekleyen") return y.durum === 'bitti';
@@ -187,7 +185,6 @@ export default function YarismalarPage() {
           <Trophy className="text-emerald-400 w-8 h-8" /> Öykü Yarışmaları
         </h1>
 
-        {/* SEKMELER */}
         <div className="flex flex-wrap gap-3 mb-8 border-b border-zinc-800 pb-4">
           <button
             onClick={() => setAktifSekme("aktif")}
@@ -292,7 +289,6 @@ export default function YarismalarPage() {
           </div>
         )}
 
-        {/* BAŞVURU MODALI */}
         {selectedYarisma && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-zinc-900 border border-zinc-800 w-full max-w-xl rounded-3xl p-6 shadow-2xl space-y-6">
@@ -330,7 +326,6 @@ export default function YarismalarPage() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
