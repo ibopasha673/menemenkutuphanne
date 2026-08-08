@@ -12,14 +12,6 @@ type SliderItem = {
   slogan: string | null;
 };
 
-type BookItem = {
-  id: string;
-  baslik: string;
-  yazar: string;
-  gorsel_url: string;
-  toplam_sayfa: number;
-};
-
 type UserProfile = {
   isim: string | null;
   soyisim: string | null;
@@ -27,7 +19,6 @@ type UserProfile = {
 
 export default function Home() {
   const [sliders, setSliders] = useState<SliderItem[]>([]);
-  const [books, setBooks] = useState<BookItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -40,7 +31,6 @@ export default function Home() {
   // =========================================================
   const loadUser = async () => {
     try {
-      // Önce gerçek kullanıcıyı Auth üzerinden alıyoruz.
       const {
         data: { user },
         error: userError,
@@ -49,7 +39,6 @@ export default function Home() {
       console.log("ANA SAYFA AUTH USER:", user);
       console.log("ANA SAYFA AUTH ERROR:", userError);
 
-      // Kullanıcı giriş yapmamışsa
       if (!user) {
         console.log("ANA SAYFA: Kullanıcı giriş yapmamış.");
         setUserProfile(null);
@@ -59,9 +48,6 @@ export default function Home() {
 
       console.log("ANA SAYFA: Giriş yapılmış kullanıcı:", user.id);
 
-      // Önce metadata'dan geçici isim al.
-      // Böylece profiles sorgusu gecikse bile
-      // kullanıcı giriş yapmış olarak görünür.
       const metadataProfile: UserProfile = {
         isim:
           user.user_metadata?.isim ||
@@ -86,10 +72,8 @@ export default function Home() {
           null,
       };
 
-      // Önce kullanıcıyı giriş yapmış kabul ediyoruz.
       setUserProfile(metadataProfile);
 
-      // Sonra profiles tablosundan gerçek bilgileri çekiyoruz.
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("isim, soyisim")
@@ -99,7 +83,6 @@ export default function Home() {
       console.log("ANA SAYFA PROFILE:", profileData);
       console.log("ANA SAYFA PROFILE ERROR:", profileError);
 
-      // Profiles tablosundan bilgi geldiyse onu kullan.
       if (profileData) {
         setUserProfile({
           isim: profileData.isim,
@@ -110,9 +93,6 @@ export default function Home() {
       setAuthLoading(false);
     } catch (error) {
       console.error("ANA SAYFA KULLANICI HATASI:", error);
-
-      // Burada kullanıcıyı otomatik olarak misafir yapmıyoruz.
-      // getUser hata verirse sadece loading'i kapatıyoruz.
       setAuthLoading(false);
     }
   };
@@ -151,21 +131,6 @@ export default function Home() {
           },
         ]);
       }
-
-      // =====================================================
-      // KİTAPLAR
-      // =====================================================
-      const { data: bookData, error: bookError } = await supabase
-        .from("books")
-        .select("*")
-        .order("olusturma_tarihi", { ascending: false });
-
-      console.log("BOOK DATA:", bookData);
-      console.log("BOOK ERROR:", bookError);
-
-      if (bookData) {
-        setBooks(bookData);
-      }
     };
 
     initialize();
@@ -180,8 +145,6 @@ export default function Home() {
       console.log("AUTH SESSION:", session);
 
       if (session?.user) {
-        // Kullanıcı giriş yaptıysa burada direkt
-        // giriş yapılmış olarak işaretliyoruz.
         const user = session.user;
 
         const metadataProfile: UserProfile = {
@@ -211,7 +174,6 @@ export default function Home() {
         setUserProfile(metadataProfile);
         setAuthLoading(false);
 
-        // Profiles tablosundan güncel bilgiyi ayrıca çek.
         setTimeout(() => {
           loadUser();
         }, 0);
@@ -276,7 +238,7 @@ export default function Home() {
   // SAYFA
   // =========================================================
   return (
-    <div className="relative w-full min-h-[120vh] flex flex-col bg-zinc-950 text-white overflow-x-hidden">
+    <div className="relative w-full min-h-screen flex flex-col bg-zinc-950 text-white overflow-x-hidden">
       {/* =====================================================
           HEADER
       ====================================================== */}
@@ -318,12 +280,8 @@ export default function Home() {
           </Link>
 
           {authLoading ? (
-            // Kullanıcı kontrol edilirken boş bırakıyoruz.
             <div className="w-32 h-10 rounded-xl bg-zinc-900/50 animate-pulse" />
           ) : userProfile ? (
-            // =================================================
-            // GİRİŞ YAPMIŞ KULLANICI
-            // =================================================
             <div className="flex items-center gap-3">
               <Link
                 href="/kullanici"
@@ -344,9 +302,6 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            // =================================================
-            // MİSAFİR
-            // =================================================
             <Link
               href="/giris"
               className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 transition-all rounded-xl text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/20"
@@ -397,59 +352,6 @@ export default function Home() {
           ))}
         </div>
       </main>
-
-      {/* =====================================================
-          KİTAP ARŞİVİ
-      ====================================================== */}
-      <section className="w-full py-16 px-8 bg-zinc-950 border-t border-zinc-900 z-20">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-emerald-400 flex items-center justify-center gap-2">
-              <BookOpen className="w-6 h-6" />
-
-              Kulüp Arşivi: Geçmişte Okunan Kitaplar
-            </h2>
-
-            <p className="text-xs text-zinc-400">
-              Ekşi Kitap Kulübü İzmir olarak şimdiye kadar birlikte okuduğumuz
-              eserler.
-            </p>
-          </div>
-
-          {books.length === 0 ? (
-            <div className="text-center text-zinc-500 text-sm py-8">
-              Henüz arşivde kitap bulunmuyor.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-              {books.map((book) => (
-                <div
-                  key={book.id}
-                  className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg hover:border-emerald-500/50 transition"
-                >
-                  <img
-                    src={book.gorsel_url}
-                    alt={book.baslik}
-                    className="w-28 h-36 rounded-xl object-cover mb-3 border border-zinc-800 shadow-md"
-                  />
-
-                  <h3 className="text-sm font-bold text-white line-clamp-1">
-                    {book.baslik}
-                  </h3>
-
-                  <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5">
-                    {book.yazar}
-                  </p>
-
-                  <span className="text-[11px] font-medium text-emerald-400 mt-2 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    {book.toplam_sayfa} Sayfa
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* =====================================================
           FOOTER
