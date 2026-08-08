@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { BookOpen, LogOut, User as UserIcon } from "lucide-react";
+import { BookOpen, LogOut, User as UserIcon, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -270,6 +270,14 @@ export default function Home() {
             SAĞ ÜST KULLANICI ALANI
         ================================================== */}
         <div className="flex items-center gap-4">
+          <Link
+            href="/blogs"
+            className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"
+          >
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span>Blogs</span>
+          </Link>
+
           <Link
             href="/kitaplar"
             className="text-xs md:text-sm font-medium text-zinc-300 hover:text-emerald-400 transition bg-zinc-900/80 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2 shadow-md"

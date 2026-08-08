@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star } from "lucide-react";
+import { Plus, Trash2, Edit3, Save, X, LogOut, Users, Shield, ShieldAlert, BookOpen, MessageSquare, Star, FileText } from "lucide-react";
 
 type SliderItem = {
   id: string;
@@ -377,12 +377,20 @@ export default function AdminPage() {
           <p className="text-xs text-zinc-400 mt-1">Slider, üyeler ve okunmuş kitap yönetimini buradan yapabilirsiniz.</p>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" /> Çıkış Yap
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/blogs")}
+            className="px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 rounded-xl transition flex items-center gap-2 text-sm text-emerald-400 cursor-pointer font-semibold"
+          >
+            <FileText className="w-4 h-4" /> Blogs
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition flex items-center gap-2 text-sm text-red-400 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" /> Çıkış Yap
+          </button>
+        </div>
       </div>
 
       {/* SEKME GEÇİŞLERİ */}

@@ -10,6 +10,7 @@ import {
   BookOpen,
   Phone,
   CreditCard,
+  FileText,
 } from "lucide-react";
 
 type Profile = {
@@ -212,6 +213,15 @@ export default function KullaniciPaneli() {
               BUTONLAR
           ================================================= */}
           <div className="flex items-center gap-3">
+
+            {/* BLOGS LİNKİ */}
+            <Link
+              href="/blogs"
+              className="px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition rounded-xl border border-zinc-800 flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4 text-emerald-400" />
+              Blogs
+            </Link>
 
             {/* KİTAPLAR LİNKİ */}
             <Link
