@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { BookOpen, LogOut, User as UserIcon, FileText, Bell, X } from "lucide-react";
+import { BookOpen, LogOut, User as UserIcon, FileText, Bell, X, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -15,6 +15,7 @@ type SliderItem = {
 type UserProfile = {
   isim: string | null;
   soyisim: string | null;
+  role: string | null;
 };
 
 type DuyuruItem = {
@@ -80,13 +81,14 @@ export default function Home() {
             return parts.slice(1).join(" ");
           })() ||
           null,
+        role: user.user_metadata?.role || null,
       };
 
       setUserProfile(metadataProfile);
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("isim, soyisim")
+        .select("isim, soyisim, role")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -97,6 +99,7 @@ export default function Home() {
         setUserProfile({
           isim: profileData.isim,
           soyisim: profileData.soyisim,
+          role: profileData.role,
         });
       }
 
@@ -189,6 +192,7 @@ export default function Home() {
               return parts.slice(1).join(" ");
             })() ||
             null,
+          role: user.user_metadata?.role || null,
         };
 
         setUserProfile(metadataProfile);
@@ -265,6 +269,11 @@ export default function Home() {
     const fullName = `${isim} ${soyisim}`.trim();
 
     return fullName || "Üye";
+  };
+
+  // Rol kontrolüne göre doğru paneli belirle (Admin ise /admin, değilse /kullanici)
+  const getPanelLink = () => {
+    return userProfile?.role === "admin" ? "/admin" : "/kullanici";
   };
 
   // =========================================================
@@ -344,10 +353,14 @@ export default function Home() {
           ) : userProfile ? (
             <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-center">
               <Link
-                href="/kullanici"
+                href={getPanelLink()}
                 className="text-xs md:text-sm font-medium text-emerald-300 hover:text-emerald-400 transition bg-zinc-900/80 px-3 md:px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-1.5 md:gap-2 shadow-md max-w-[160px] md:max-w-none truncate"
               >
-                <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400 flex-shrink-0" />
+                {userProfile.role === "admin" ? (
+                  <Shield className="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-400 flex-shrink-0" />
+                ) : (
+                  <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400 flex-shrink-0" />
+                )}
 
                 <span className="truncate">Merhaba, {getUserName()}</span>
               </Link>
